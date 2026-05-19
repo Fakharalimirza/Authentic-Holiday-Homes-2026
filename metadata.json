@@ -1,0 +1,10 @@
+{
+  "name": "Authentic Holiday Homes",
+  "description": "Premium holiday home rental platform in Dubai, featuring high-end property listings, real-time booking, guest-host management, and multi-language support (English & Arabic).",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

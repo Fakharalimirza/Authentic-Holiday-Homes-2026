@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.cdnfonts.com/css/dubai');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Dubai", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Dubai", sans-serif;
+  --font-arabic: "Dubai", sans-serif;
+  
+  --color-zinc-950: #09090b;
+  --color-brand: #D91F28;
+  --color-brand-hover: #b81a22;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+body {
+  @apply font-sans antialiased text-zinc-900 bg-white dark:text-zinc-100 dark:bg-zinc-950;
+}
+
+[lang="ar"] body {
+  font-family: var(--font-arabic), "Inter", sans-serif;
+}
+
+[lang="ar"] h1, [lang="ar"] h2, [lang="ar"] h3, [lang="ar"] h4, [lang="ar"] h5, [lang="ar"] h6 {
+  font-family: var(--font-arabic), "Outfit", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-display;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

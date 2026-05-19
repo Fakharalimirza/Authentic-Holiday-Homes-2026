@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["guest", "host", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "wishlist": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Property": {
+      "title": "Property",
+      "description": "Holiday home listing details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "hostId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "pricePerNight": { "type": "number" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "location": {
+          "type": "object",
+          "properties": {
+            "address": { "type": "string" },
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "amenities": { "type": "array", "items": { "type": "string" } },
+        "maxGuests": { "type": "number" },
+        "bedrooms": { "type": "number" },
+        "bathrooms": { "type": "number" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "isAvailable": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["hostId", "title", "pricePerNight", "location"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Property rental booking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "guestId": { "type": "string" },
+        "checkIn": { "type": "string", "format": "date-time" },
+        "checkOut": { "type": "string", "format": "date-time" },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
+        "paymentIntentId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["propertyId", "guestId", "checkIn", "checkOut", "totalPrice", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review for a property",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "userId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Real-time chat message between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "User profiles" },
+    "properties": { "schema": "Property", "description": "Property listings" },
+    "bookings": { "schema": "Booking", "description": "Booking records" },
+    "properties/{propertyId}/reviews": { "schema": "Review", "description": "Property reviews" },
+    "chats": { "schema": "ChatMessage", "description": "Chat messages (grouped by chatId)" }
+  }
+}

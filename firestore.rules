@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Primitive Definitions
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isAdmin() { 
+      return request.auth != null && 
+             (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
+              (request.auth.token.email.lower() == 'fakharalimirza@gmail.com')); 
+    }
+    function isEmailVerified() { 
+      return request.auth != null && 
+             (request.auth.token.email_verified == true || 
+              request.auth.token.email.lower() == 'fakharalimirza@gmail.com'); 
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // --- Properties ---
+    match /properties/{propertyId} {
+      function isValidProperty(data) {
+        return data.title is string &&
+               data.price is number &&
+               data.location != null &&
+               data.updatedAt != null;
+      }
+      allow read: if true;
+      allow create: if isSignedIn() && (isAdmin() || (isEmailVerified() && isValidProperty(incoming()) && incoming().hostId is string && incoming().createdAt != null));
+      allow update: if isSignedIn() && (isAdmin() || (isOwner(existing().hostId) && isValidProperty(incoming())));
+      allow delete: if isSignedIn() && (isAdmin() || isOwner(existing().hostId));
+      
+      // Reviews Subcollection
+      match /reviews/{reviewId} {
+        function isValidReview(data) {
+          return data.keys().hasAll(['userId', 'rating', 'comment', 'createdAt']) &&
+                 data.userId == request.auth.uid &&
+                 data.rating >= 1 && data.rating <= 5 &&
+                 data.createdAt == request.time;
+        }
+        allow read: if true;
+        allow create: if isSignedIn() && isEmailVerified() && isValidReview(incoming());
+        allow delete: if isOwner(existing().userId) || isAdmin();
+      }
+    }
+
+    // --- Bookings ---
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && (resource.data.guestId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn(); // Filter queries in app code
+      allow create: if isSignedIn() && isEmailVerified();
+      allow update: if isSignedIn() && (resource.data.guestId == request.auth.uid || isAdmin());
+    }
+
+    // --- Chats ---
+    match /chats/{messageId} {
+      function isParticipant() {
+        return isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      }
+      allow read: if isParticipant();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid && isValidId(messageId);
+      allow update: if isParticipant() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+    }
+  }
+}
