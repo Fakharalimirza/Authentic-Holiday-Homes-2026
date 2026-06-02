@@ -1,21 +1,41 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth, collection, query, where, getDocs, doc, getDoc, signOut } from '../lib/firebase';
 import PropertyCard from '../components/PropertyCard';
 import { Property } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Calendar, Settings as SettingsIcon, LogOut } from 'lucide-react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { Heart, Calendar, Settings as SettingsIcon, LogOut, Star, Trash2, MessageSquare } from 'lucide-react';
+import TicketsConsole from './admin/TicketsConsole';
 
-export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'bookings' | 'wishlist' | 'settings' }) {
+export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'bookings' | 'wishlist' | 'settings' | 'reviews' | 'support' }) {
   const { user, profile } = useAuth();
-  const { t } = useSettings();
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const { t, theme, setTheme } = useSettings();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [activeTab, setActiveTabState] = useState<'bookings' | 'wishlist' | 'settings' | 'reviews' | 'support'>(() => {
+    const qTab = searchParams.get('tab') as any;
+    const validTabs = ['bookings', 'wishlist', 'settings', 'reviews', 'support'];
+    return qTab && validTabs.includes(qTab) ? qTab : defaultTab;
+  });
+
+  const setActiveTab = (tabId: 'bookings' | 'wishlist' | 'settings' | 'reviews' | 'support') => {
+    setActiveTabState(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') as any;
+    const validTabs = ['bookings', 'wishlist', 'settings', 'reviews', 'support'];
+    if (tab && validTabs.includes(tab) && tab !== activeTab) {
+      setActiveTabState(tab);
+    }
+  }, [searchParams]);
   const [wishlistItems, setWishlistItems] = useState<Property[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [bookedPropertiesList, setBookedPropertiesList] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +54,17 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
         // Fetch Bookings
         const q = query(collection(db, 'bookings'), where('guestId', '==', user.uid));
         const bookingSnaps = await getDocs(q);
-        setBookings(bookingSnaps.docs.map(d => ({ id: d.id, ...d.data() })));
+        const fetchedBookings = bookingSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
+        setBookings(fetchedBookings);
+
+        // Fetch properties related to bookings for dropdown selection
+        if (fetchedBookings.length > 0) {
+          const propIds = Array.from(new Set(fetchedBookings.map((b: any) => b.propertyId)));
+          const propertyPromises = propIds.map((id: string) => getDoc(doc(db, 'properties', id)));
+          const snaps = await Promise.all(propertyPromises);
+          const bookedProps = snaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() } as Property));
+          setBookedPropertiesList(bookedProps);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -62,6 +92,8 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
           {[
             { id: 'bookings', label: t('my_bookings'), icon: Calendar },
             { id: 'wishlist', label: t('wishlist'), icon: Heart },
+            { id: 'reviews', label: 'My Reviews', icon: Star },
+            { id: 'support', label: 'Support Tickets', icon: MessageSquare },
             { id: 'settings', label: 'Settings', icon: SettingsIcon },
           ].map(item => (
             <button
@@ -79,7 +111,10 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
           ))}
 
           <button 
-            onClick={() => signOut(auth)}
+            onClick={async () => {
+              await signOut(auth);
+              navigate('/');
+            }}
             className="w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all mt-12"
           >
             <LogOut size={20} />
@@ -150,6 +185,80 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
               </motion.div>
             )}
 
+            {activeTab === 'reviews' && (
+              <motion.div
+                key="reviews"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <h2 className="text-3xl font-bold mb-8">My Reviews</h2>
+                <div className="space-y-6">
+                  {!profile || !profile.reviewsList || profile.reviewsList.length === 0 ? (
+                    <div className="p-12 text-center bg-zinc-50 dark:bg-zinc-900 rounded-3xl text-zinc-500">
+                      You haven't left any reviews yet. Rated properties will appear here!
+                    </div>
+                  ) : (
+                    profile.reviewsList.map((item: any) => (
+                      <div 
+                        key={item.reviewId} 
+                        className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 rounded-[2rem] shadow-sm relative group"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-black text-zinc-900 dark:text-white text-lg hover:underline transition-all">
+                              <a href={`/property/${item.propertyId}`}>{item.propertyName || 'Property Review'}</a>
+                            </h3>
+                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest block mt-0.5">
+                              {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1 shrink-0">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                size={14}
+                                className={`${
+                                  i < (item.rating || 5)
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-zinc-200 dark:text-zinc-700'
+                                } border-none`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <p className="text-zinc-650 dark:text-zinc-400 text-sm font-semibold leading-relaxed">
+                          "{item.comment}"
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'support' && (
+              <motion.div
+                key="support"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <div className="mb-4">
+                  <h2 className="text-3xl font-semibold mb-1">Support Desk</h2>
+                  <p className="text-xs text-zinc-400">Lodge maintenance requests, rent payment coordination options, or query invoicing errors directly.</p>
+                </div>
+                <TicketsConsole 
+                  userUid={user.uid} 
+                  userRole={profile?.role || 'guest'} 
+                  userName={profile?.displayName || user.displayName || 'Resident'} 
+                  propertiesList={bookedPropertiesList} 
+                />
+              </motion.div>
+            )}
+
             {activeTab === 'settings' && (
               <motion.div
                 key="settings"
@@ -167,6 +276,31 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
                      <label className="text-sm font-medium text-zinc-500">Email Address</label>
                      <input type="email" readOnly value={user.email || ''} className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed" />
                    </div>
+                   <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                     <label className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider block">Theme Mode</label>
+                     <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-900/50 w-full p-1.5 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                       {[
+                         { id: 'system', label: t('system_mode'), desc: 'Matches device' },
+                         { id: 'light', label: t('light_mode'), desc: 'Always crisp' },
+                         { id: 'dark', label: t('dark_mode'), desc: 'Always dark' }
+                       ].map((opt) => (
+                         <button
+                           key={opt.id}
+                           type="button"
+                           onClick={() => setTheme(opt.id as any)}
+                           className={`flex flex-col items-center justify-center p-3 rounded-xl text-center transition-all ${
+                             theme === opt.id
+                               ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200/50 dark:ring-zinc-700/50'
+                               : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800/30'
+                           }`}
+                         >
+                           <span className="text-xs font-black uppercase tracking-tight">{opt.label}</span>
+                           <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">{opt.desc}</span>
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+
                    <button className="px-8 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand-hover transition-colors">Save Changes</button>
                 </div>
               </motion.div>

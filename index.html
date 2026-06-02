@@ -1,6 +1,27 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      // Bulletproof guard to prevent crashes from third-party libraries/shims trying to overwrite standard window.fetch in restricted iframe sandboxes
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          var fetchStorage = originalFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return fetchStorage;
+            },
+            set: function(newFetch) {
+              fetchStorage = newFetch;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          console.warn("Failed to patch window.fetch setter guard:", e);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/icon.png" />

@@ -15,9 +15,22 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "firebase/app": [
+        "./src/lib/firebase"
+      ],
+      "firebase/auth": [
+        "./src/lib/firebase"
+      ],
+      "firebase/firestore": [
+        "./src/lib/firebase"
+      ],
+      "firebase/storage": [
+        "./src/lib/firebase"
       ]
     },
     "allowImportingTsExtensions": true,

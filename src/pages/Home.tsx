@@ -7,6 +7,7 @@ import PropertyCard from '../components/PropertyCard';
 import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Property } from '../types';
+import PropertiesMap from '../components/PropertiesMap';
 
 const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&q=80&w=800",
@@ -33,7 +34,7 @@ const ImageColumn = ({ images, speed, reverse = false }: { images: string[], spe
   >
     {[...images, ...images, ...images].map((src, i) => (
       <div key={i} className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden shadow-2xl">
-        <img src={src} alt="Lifestyle" className="w-full h-full object-cover grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-700" referrerPolicy="no-referrer" />
+        <img src={src} alt="Lifestyle" className="w-full h-full object-cover grayscale opacity-100 hover:grayscale-0 hover:opacity-100 transition-all duration-700" referrerPolicy="no-referrer" />
       </div>
     ))}
   </motion.div>
@@ -212,6 +213,20 @@ export default function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Map Discovery Section */}
+      <section className="max-w-7xl mx-auto px-4 mt-24">
+        <div className="mb-12">
+          <h2 className="text-sm uppercase tracking-[0.2em] font-black text-zinc-400 dark:text-zinc-500 mb-2">
+            {lang === 'ar' ? 'مواقع مميزة' : 'Prime Locations'}
+          </h2>
+          <h3 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-white uppercase">
+            {lang === 'ar' ? 'اكتشف على الخريطة' : 'Explore Homes on Map'}
+          </h3>
+        </div>
+        
+        <PropertiesMap properties={properties} height="520px" />
       </section>
     </div>
   );

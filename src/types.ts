@@ -14,6 +14,7 @@ export interface Property {
   bathrooms?: number;
   maxGuests?: number;
   isAvailable?: boolean;
+  minimumNights?: number;
   rating?: number;
   reviewCount?: number;
   hostId?: string;

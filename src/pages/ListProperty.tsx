@@ -62,7 +62,7 @@ export default function ListProperty() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="relative aspect-[21/9] rounded-[3rem] overflow-hidden shadow-2xl grayscale hover:grayscale-0 transition-all duration-700"
+              className="relative aspect-[21/9] rounded-[3rem] overflow-hidden shadow-2xl lg:grayscale lg:hover:grayscale-0 transition-all duration-700"
             >
               <img 
                 src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=2000" 

@@ -1,26 +1,45 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Star, MessageSquare, ExternalLink, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Star, MessageSquare, ExternalLink, Loader2, CheckCircle, Navigation, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Contact() {
   const { t, lang } = useSettings();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const { user, profile } = useAuth();
+  const isAdmin = profile?.role === 'host' || user?.email?.toLowerCase() === 'fakharalimirza@gmail.com';
+
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
     phone: '',
     message: ''
   });
+  const [agreeContact, setAgreeContact] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [statusMsg, setStatusMsg] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus('idle');
+    if (!formData.name || !formData.email || !formData.message) {
+      setStatus('error');
+      setStatusMsg(lang === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة.' : 'Please fill in all required fields.');
+      return;
+    }
 
+    if (!agreeContact) {
+      setStatus('error');
+      setStatusMsg(lang === 'ar' ? 'يرجى الموافقة على رغبتك بالاتصال بك للمتابعة.' : 'Please agree to be contacted back to submit form.');
+      return;
+    }
+
+    setStatus('submitting');
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
@@ -30,17 +49,24 @@ export default function Contact() {
         body: JSON.stringify(formData),
       });
 
-      if (response.ok) {
-        setSubmitStatus('success');
-        setFormData({ firstName: '', lastName: '', email: '', phone: '', message: '' });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setStatus('success');
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          message: ''
+        });
+        setAgreeContact(false);
       } else {
-        setSubmitStatus('error');
+        setStatus('error');
+        setStatusMsg(data.error || (lang === 'ar' ? 'فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.' : 'Failed to send message. Please try again.'));
       }
     } catch (error) {
-      console.error('Submit error:', error);
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
+      console.error('Contact Form Submit Error:', error);
+      setStatus('error');
+      setStatusMsg(lang === 'ar' ? 'حدث خطأ في الشبكة. يرجى المحاولة مرة أخرى.' : 'A network error occurred. Please try again.');
     }
   };
 
@@ -118,117 +144,165 @@ export default function Contact() {
           </motion.div>
         </motion.div>
 
-        <motion.form 
+        <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          onSubmit={handleSubmit}
-          className="bg-zinc-50 dark:bg-zinc-900 p-10 rounded-[3rem] shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-6 flex flex-col justify-center relative overflow-hidden"
+          className="bg-white dark:bg-zinc-900 p-8 sm:p-10 rounded-[3rem] shadow-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between relative overflow-hidden h-full min-h-[600px]"
         >
-          <AnimatePresence mode="wait">
-            {submitStatus === 'success' ? (
-              <motion.div 
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute inset-0 z-10 flex flex-col items-center justify-center p-12 text-center bg-zinc-50 dark:bg-zinc-900"
-              >
-                <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mb-6">
-                  <CheckCircle size={40} />
-                </div>
-                <h3 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 uppercase tracking-tighter">
-                  {lang === 'ar' ? 'تم الإرسال بنجاح' : 'Message Sent Successfully'}
-                </h3>
-                <p className="text-zinc-500 mb-8 max-w-xs">
-                  {lang === 'ar' ? 'شكراً لتواصلك معنا. سنقوم بالرد عليك في أقرب وقت ممكن.' : "Thank you for reaching out. We've received your message and will get back to you shortly."}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center">
+                <MessageSquare size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white uppercase">
+                  {lang === 'ar' ? 'أرسل لنا رسالة' : 'Send Us a Message'}
+                </h2>
+                <p className="text-xs text-zinc-400 dark:text-zinc-550 font-semibold tracking-wider">
+                  {lang === 'ar' ? 'سنتصل بك في غضون 24 ساعة' : 'WE WILL RESPOND WITHIN 24 HOURS'}
                 </p>
-                <button 
+              </div>
+            </div>
+
+            {status === 'success' ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center text-center py-20 space-y-4"
+              >
+                <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/10 border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
+                  {lang === 'ar' ? 'تم إرسال رسالتك بنجاح!' : 'Message Sent Successfully!'}
+                </h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'شكراً لتواصلك معنا. لقد استلمنا استفسارك وسيقوم أحد مستشارينا بالتواصل معك قريباً.' 
+                    : 'Thank you for reaching out. We have received your inquiry and one of our dedicated holiday home consultants will contact you shortly.'
+                  }
+                </p>
+                <button
                   type="button"
-                  onClick={() => setSubmitStatus('idle')}
-                  className="px-8 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full font-bold text-sm uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all font-mono"
+                  onClick={() => setStatus('idle')}
+                  className="px-6 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all uppercase tracking-wider"
                 >
-                  {lang === 'ar' ? 'إرسال رسالة أخرى' : 'Send Another'}
+                  {lang === 'ar' ? 'إرسال رسالة أخرى' : 'Send Another Message'}
                 </button>
               </motion.div>
             ) : (
-              <div key="form" className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">{t('first_name')}</label>
-                    <input 
-                      required
-                      type="text" 
-                      value={formData.firstName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                      className="w-full px-6 py-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none" 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">{t('last_name')}</label>
-                    <input 
-                      type="text" 
-                      value={formData.lastName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                      className="w-full px-6 py-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none" 
-                    />
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-455 dark:text-zinc-500 uppercase tracking-widest block">
+                    {lang === 'ar' ? 'الاسم بالكامل *' : 'Full Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder={lang === 'ar' ? 'أدخل اسمك الكامل' : 'e.g. John Doe'}
+                    className="w-full px-4.5 py-3.5 text-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-brand/60 focus:ring-1 focus:ring-brand/40 transition-all"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-455 dark:text-zinc-500 uppercase tracking-widest block">
+                    {lang === 'ar' ? 'البريد الإلكتروني *' : 'Email Address *'}
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="john@example.com"
+                    className="w-full px-4.5 py-3.5 text-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-brand/60 focus:ring-1 focus:ring-brand/40 transition-all ltr:text-left rtl:text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-455 dark:text-zinc-500 uppercase tracking-widest block">
                     {lang === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
                   </label>
-                  <input 
-                    type="tel" 
+                  <input
+                    type="tel"
+                    name="phone"
                     value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-6 py-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none" 
-                    placeholder="+971 -- --- ----"
+                    onChange={handleChange}
+                    placeholder="+971 50 000 0000"
+                    className="w-full px-4.5 py-3.5 text-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-brand/60 focus:ring-1 focus:ring-brand/40 transition-all"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">{t('email')}</label>
-                  <input 
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-455 dark:text-zinc-500 uppercase tracking-widest block">
+                    {lang === 'ar' ? 'الرسالة أو الاستفسار *' : 'Your Message *'}
+                  </label>
+                  <textarea
+                    name="message"
                     required
-                    type="email" 
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-6 py-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">{t('message')}</label>
-                  <textarea 
-                    required
-                    rows={4} 
+                    rows={5}
                     value={formData.message}
-                    onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                    className="w-full px-6 py-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none resize-none"
-                  ></textarea>
+                    onChange={handleChange}
+                    placeholder={lang === 'ar' ? 'اكتب تفاصيل استفسارك هنا...' : 'How can we help you today? Provide details on property type, dates, or guests...'}
+                    className="w-full px-4.5 py-3.5 text-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-brand/60 focus:ring-1 focus:ring-brand/40 transition-all resize-none"
+                  />
                 </div>
-                
-                {submitStatus === 'error' && (
-                  <p className="text-red-500 text-sm font-medium px-1">
-                    {lang === 'ar' ? 'فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.' : 'Failed to send message. Please try again.'}
-                  </p>
+
+                <div className="flex items-start gap-3 pt-2">
+                  <div className="flex items-center h-5">
+                    <input
+                      id="agreeContact"
+                      name="agreeContact"
+                      type="checkbox"
+                      required
+                      checked={agreeContact}
+                      onChange={(e) => setAgreeContact(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 focus:ring-brand/50 cursor-pointer accent-brand"
+                    />
+                  </div>
+                  <label htmlFor="agreeContact" className="text-xs text-zinc-500 dark:text-zinc-400 font-medium select-none cursor-pointer leading-snug">
+                    {lang === 'ar' 
+                      ? 'أوافق على التواصل معي من قبل فريق Authentic Holiday Homes بشأن استفساري.' 
+                      : 'I agree to be contacted back by Authentic Holiday Homes team regarding my inquiry.'}
+                  </label>
+                </div>
+
+                {status === 'error' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-450 rounded-2xl border border-rose-100 dark:border-rose-900/50 text-xs font-semibold"
+                  >
+                    {statusMsg}
+                  </motion.div>
                 )}
 
-                <button 
-                  disabled={isSubmitting}
-                  className="w-full py-5 bg-brand text-white rounded-2xl font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-brand/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      {lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}
-                    </>
-                  ) : (
-                    t('send_inquiry')
-                  )}
-                </button>
-              </div>
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={status === 'submitting'}
+                    className="w-full py-4 bg-brand hover:bg-brand/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none text-white font-bold text-xs rounded-2xl shadow-lg shadow-brand/15 transition-all uppercase tracking-wider flex items-center justify-center gap-2"
+                  >
+                    {status === 'submitting' ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        {lang === 'ar' ? 'جاري إرسال الاستفسار...' : 'Sending Inquiry...'}
+                      </>
+                    ) : (
+                      <>
+                        <Send size={15} />
+                        {lang === 'ar' ? 'إرسال الرسالة الإلكترونية' : 'Send Message'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             )}
-          </AnimatePresence>
-        </motion.form>
+          </div>
+        </motion.div>
       </div>
 
       {/* Map Section */}
@@ -236,26 +310,73 @@ export default function Contact() {
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="w-full h-[500px] rounded-[3rem] overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-2xl relative group"
+        className="w-full h-[500px] rounded-[3rem] overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-2xl relative group bg-zinc-50 dark:bg-zinc-950"
       >
-        <div className="absolute top-8 right-8 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-zinc-200 dark:border-zinc-800">
+        {/* HQ Address Box / Directions Console */}
+        <div className="absolute top-4 right-4 left-4 sm:top-8 sm:right-8 sm:left-auto z-20 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-6 rounded-[2rem] shadow-xl border border-zinc-200 dark:border-zinc-800 max-w-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
             <p className="text-xs font-black text-zinc-400 uppercase tracking-widest">{lang === 'ar' ? 'مقرنا' : 'Our HQ'}</p>
           </div>
-          <h3 className="text-xl font-bold text-zinc-900 dark:text-white uppercase mb-1">{lang === 'ar' ? 'سبورت سوسيتي مول' : 'Sport Society Mall'}</h3>
-          <p className="text-sm text-zinc-500">{lang === 'ar' ? 'مردف، دبي' : 'Mirdif, Dubai'}</p>
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white uppercase mb-1">{lang === 'ar' ? 'سبورت سوسيتي مول' : 'Sport Society Mall'}</h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">{lang === 'ar' ? 'مردف، دبي' : 'Mirdif, Dubai'}</p>
+          <a
+            href="https://www.google.com/maps/place/Authentic+Holiday+Homes/@25.2220003,55.4081068,17z/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 bg-brand hover:bg-brand/90 hover:scale-[1.02] active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-lg shadow-brand/15 transition-all uppercase tracking-wider flex items-center justify-center gap-2"
+          >
+            <Navigation size={14} className="shrink-0 animate-pulse" />
+            {lang === 'ar' ? 'البدء بالاتجاهات' : 'Get Directions'}
+          </a>
         </div>
-        <iframe 
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4441.306804334587!2d55.4081068!3d25.222000299999998!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3e5f43fbe01575e5%3A0xfad1b6ee64ef2244!2sAuthentic%20Holiday%20Homes!5e1!3m2!1sen!2sae!4v1779098373808!5m2!1sen!2sae" 
-          width="100%" 
-          height="100%" 
-          style={{ border: 0 }} 
-          allowFullScreen={true} 
-          loading="lazy" 
-          referrerPolicy="no-referrer-when-downgrade"
-          className="grayscale dark:invert opacity-80 group-hover:grayscale-0 group-hover:opacity-100 dark:group-hover:invert-0 transition-all duration-700"
-        ></iframe>
+
+        <div className="relative w-full h-full overflow-hidden">
+          {/* Beautiful static map snapshot locally stored */}
+          <img 
+            src="/map.webp" 
+            alt="Mirdif Dubai Map Snapshot for Authentic Holiday Homes" 
+            className="absolute inset-0 w-full h-full object-cover transition-all duration-750 select-none pointer-events-none filter lg:grayscale lg:contrast-[1.05] lg:brightness-95 lg:opacity-90 lg:group-hover:scale-105 lg:group-hover:grayscale-0 lg:group-hover:opacity-100 lg:group-hover:brightness-100" 
+            referrerPolicy="no-referrer"
+          />
+
+          {/* Subtle Gradient Overlays for High Luxury Feel */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+
+          {/* Glowing active site icon marker aligned precisely in the center representing our headquarters */}
+          <div className="absolute left-[50%] top-[45%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-10">
+            <div className="relative flex items-center justify-center">
+              {/* Outer pulsing brand indicator halos */}
+              <div className="w-20 h-20 bg-brand/25 rounded-full animate-ping absolute" />
+              <div className="w-12 h-12 bg-brand/15 rounded-full animate-pulse absolute" />
+              
+              {/* Pulsing Site Logo Container */}
+              <motion.div 
+                animate={{ 
+                  scale: [1, 1.12, 1],
+                  boxShadow: [
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15)",
+                    "0 20px 25px -5px rgba(190, 24, 74, 0.35), 0 8px 10px -6px rgba(190, 24, 74, 0.3)",
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15)"
+                  ]
+                }}
+                transition={{ 
+                  duration: 2.5, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+                className="w-14 h-14 bg-white dark:bg-zinc-900 rounded-2xl flex items-center justify-center p-2.5 shadow-2xl border border-zinc-200/50 dark:border-zinc-800/80 group-hover:scale-105 transition-all duration-300 relative z-10"
+              >
+                <img 
+                  src="/icon.png" 
+                  alt="Authentic Holiday Homes Icon" 
+                  className="w-full h-full object-contain pointer-events-none select-none"
+                  referrerPolicy="no-referrer"
+                />
+              </motion.div>
+            </div>
+          </div>
+        </div>
       </motion.div>
     </div>
   );

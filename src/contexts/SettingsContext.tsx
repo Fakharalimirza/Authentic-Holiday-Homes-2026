@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Language = 'en' | 'ar';
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark' | 'system';
 
 interface SettingsContextType {
   lang: Language;
   theme: Theme;
+  resolvedTheme: 'light' | 'dark';
   setLang: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   t: (key: string) => string;
@@ -34,6 +35,7 @@ const translations: Record<Language, Record<string, string>> = {
     no_results: "No properties found in Dubai.",
     dark_mode: "Dark Mode",
     light_mode: "Light Mode",
+    system_mode: "System Preference",
     english: "English",
     arabic: "Arabic",
     properties: "Properties",
@@ -96,6 +98,7 @@ const translations: Record<Language, Record<string, string>> = {
     no_results: "لم يتم العثور على عقارات في دبي.",
     dark_mode: "الوضع المظلم",
     light_mode: "الوضع المضيء",
+    system_mode: "حسب نظام الجهاز",
     english: "الإنجليزية",
     arabic: "العربية",
     properties: "العقارات",
@@ -142,7 +145,14 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Language>('en');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const saved = localStorage.getItem('ahh_theme');
+    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      return saved as Theme;
+    }
+    return 'system';
+  });
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -150,19 +160,45 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [lang]);
 
   useEffect(() => {
-    if (theme === 'dark') {
+    if (theme === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+        setResolvedTheme(e.matches ? 'dark' : 'light');
+      };
+      
+      handleMediaChange(media);
+      
+      if (media.addEventListener) {
+        media.addEventListener('change', handleMediaChange);
+        return () => media.removeEventListener('change', handleMediaChange);
+      } else {
+        media.addListener(handleMediaChange);
+        return () => media.removeListener(handleMediaChange);
+      }
+    } else {
+      setResolvedTheme(theme);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    if (resolvedTheme === 'dark') {
       document.documentElement.classList.add('dark');
       document.documentElement.style.colorScheme = 'dark';
     } else {
       document.documentElement.classList.remove('dark');
       document.documentElement.style.colorScheme = 'light';
     }
-  }, [theme]);
+  }, [resolvedTheme]);
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('ahh_theme', newTheme);
+  };
 
   const t = (key: string) => translations[lang][key] || key;
 
   return (
-    <SettingsContext.Provider value={{ lang, theme, setLang, setTheme, t }}>
+    <SettingsContext.Provider value={{ lang, theme, resolvedTheme, setLang, setTheme, t }}>
       {children}
     </SettingsContext.Provider>
   );

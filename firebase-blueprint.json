@@ -88,6 +88,89 @@
         "timestamp": { "type": "string", "format": "date-time" },
         "read": { "type": "boolean" }
       }
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application configurations",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string" },
+        "trn": { "type": "string" },
+        "licenseNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website": { "type": "string" },
+        "currencyOfChoice": { "type": "string" },
+        "currencySymbol": { "type": "string" },
+        "timezoneValue": { "type": "string" },
+        "dateFormat": { "type": "string" },
+        "availableCategories": { "type": "array", "items": { "type": "string" } },
+        "availableAreas": { "type": "array", "items": { "type": "string" } },
+        "availableAmenities": { "type": "array", "items": { "type": "string" } },
+        "availableFurnishing": { "type": "array", "items": { "type": "string" } },
+        "customBrandColor": { "type": "string" },
+        "customFontFamily": { "type": "string" },
+        "letterheadTitle": { "type": "string" },
+        "letterheadSlogan": { "type": "string" },
+        "letterheadWatermark": { "type": "string" },
+        "letterheadSelectedTemplate": { "type": "string", "enum": ["modern", "minimalist", "classic"] },
+        "letterheadLogoUrl": { "type": "string" },
+        "letterheadImageUrl": { "type": "string" },
+        "letterheadPageSize": { "type": "string" },
+        "letterheadMarginTop": { "type": "number" },
+        "letterheadMarginBottom": { "type": "number" },
+        "letterheadMarginLeft": { "type": "number" },
+        "letterheadMarginRight": { "type": "number" }
+      }
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Lodge requests for maintenance, rent collection scheduling, or invoicing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userProfileRole": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "propertyTitle": { "type": "string" },
+        "category": { "type": "string", "enum": ["maintenance", "rent_collection", "invoice_query", "other"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "resolved"] },
+        "scheduledDate": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "StaffMessage": {
+      "title": "StaffMessage",
+      "description": "Inner office real-time coordination chat messages available specifically to staff members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "StaffDM": {
+      "title": "StaffDM",
+      "description": "Direct message between staff and other members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "senderRole", "recipientId", "channelId", "text"]
     }
   },
   "firestore": {
@@ -95,6 +178,10 @@
     "properties": { "schema": "Property", "description": "Property listings" },
     "bookings": { "schema": "Booking", "description": "Booking records" },
     "properties/{propertyId}/reviews": { "schema": "Review", "description": "Property reviews" },
-    "chats": { "schema": "ChatMessage", "description": "Chat messages (grouped by chatId)" }
+    "chats": { "schema": "ChatMessage", "description": "Chat messages (grouped by chatId)" },
+    "tickets": { "schema": "SupportTicket", "description": "Support tickets lodged by guests/landlords" },
+    "staff_messages": { "schema": "StaffMessage", "description": "Coordination messages circulated among workspace staff roles" },
+    "staff_dms": { "schema": "StaffDM", "description": "Direct messages between staff and other users" },
+    "settings": { "schema": "Settings", "description": "Global system configurations" }
   }
 }

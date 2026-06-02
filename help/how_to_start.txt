@@ -1,0 +1,68 @@
+========================================================================
+             AUTHENTIC HOLIDAY HOMES PORTAL - HOW TO START DEVELOPMENT
+========================================================================
+
+Welcome to the Authentic Holiday Homes Management Portal! 
+This guide documents how to set up, build, and run the platform.
+
+------------------------------------------------------------------------
+1. PREREQUISITES
+------------------------------------------------------------------------
+Ensure you have the following installed on your machine:
+* Node.js (v18.x or premium/LTE newer)
+* npm (v9.x or modern equivalent)
+* Access to either Firebase (Firestore & Storage) or a cPanel MySQL Database.
+
+------------------------------------------------------------------------
+2. CLONING & INSTALLATION
+------------------------------------------------------------------------
+Navigate to the root index directory and install all required dependencies:
+
+    npm install
+
+------------------------------------------------------------------------
+3. SETUP ENVIRONMENT CONFIGURATION
+------------------------------------------------------------------------
+The platform is fully decoupled. Copy the example configuration template:
+
+    cp .env.example .env
+
+Open the `.env` file and declare your secret environment configurations:
+* Database credentials (MySQL and Firebase)
+* Cloud authentication credentials (Firebase service account keys)
+* Image/FTP integration details (FTP Host details for cPanel option)
+* APIs and mail servers (SMTP configurations, Stripe Payment Gateway)
+
+------------------------------------------------------------------------
+4. DEVELOPMENT MODE
+------------------------------------------------------------------------
+To launch the fast development node container with active live-reloads:
+
+    npm run dev
+
+The portal will begin spinning up on: http://localhost:3000
+
+------------------------------------------------------------------------
+5. PRODUCTION BUILD & EXECUTION
+------------------------------------------------------------------------
+The build pipeline bundles the React frontend into static index files
+and compiles the modular backend TypeScript router code through esbuild
+into a highly performance CJS file (`dist/server.cjs`) to prevent ES
+import conflicts in Node containers.
+
+1. Build production targets:
+   
+    npm run build
+
+2. Start the production host (runs port 3000):
+
+    npm run start
+
+------------------------------------------------------------------------
+6. USEFUL COMMANDS
+------------------------------------------------------------------------
+* Save memory & purge distribution cache:
+  npm run clean
+
+* Check and validate TypeScript type-safety:
+  npm run lint

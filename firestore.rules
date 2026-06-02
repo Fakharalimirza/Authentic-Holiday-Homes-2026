@@ -1,35 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 0. Global Safety Net
+    // 0. Global Safety Net - By default, deny everything
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // 3. Primitive Definitions
+    // 1. Primitive Definitions for Authentication & Roles
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
+    
+    function hasEmail(email) {
+      return request.auth != null && 
+             request.auth.token != null && 
+             'email' in request.auth.token && 
+             request.auth.token.email != null && 
+             request.auth.token.email.lower() == email.lower();
+    }
+    
+    // Check if user is explicit administrator (admin email or admin table)
     function isAdmin() { 
       return request.auth != null && 
              (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
-              (request.auth.token.email.lower() == 'fakharalimirza@gmail.com')); 
+              hasEmail('fakharalimirza@gmail.com')); 
     }
+    
     function isEmailVerified() { 
       return request.auth != null && 
-             (request.auth.token.email_verified == true || 
-              request.auth.token.email.lower() == 'fakharalimirza@gmail.com'); 
+              (request.auth.token.email_verified == true || 
+               hasEmail('fakharalimirza@gmail.com')); 
     }
 
-    // --- Users ---
+    // Check if user is a member of the elite staff / workspace hosts
+    function isStaff() {
+      return isSignedIn() && (
+        hasEmail('fakharalimirza@gmail.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['super_admin', 'admin', 'agent', 'maintenance', 'host', 'landlord'])
+      );
+    }
+
+    // --- Users Collection ---
+    // Rule: Signed-in users can search profiles to coordinate chats.
+    // However, only administrators or the actual user profile owner can perform edits/registration updates.
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if isSignedIn();
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
-    // --- Properties ---
+    // --- Properties Collection ---
+    // Rule: Properties and pricing are publicly available for browsing & reviews rating.
+    // Creating/updating listings is restricted to certified hosts, agency staff, or administrators.
     match /properties/{propertyId} {
       function isValidProperty(data) {
         return data.title is string &&
@@ -42,7 +67,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (isAdmin() || (isOwner(existing().hostId) && isValidProperty(incoming())));
       allow delete: if isSignedIn() && (isAdmin() || isOwner(existing().hostId));
       
-      // Reviews Subcollection
+      // Property Reviews Subcollection
       match /reviews/{reviewId} {
         function isValidReview(data) {
           return data.keys().hasAll(['userId', 'rating', 'comment', 'createdAt']) &&
@@ -56,15 +81,18 @@ service cloud.firestore {
       }
     }
 
-    // --- Bookings ---
+    // --- Bookings & Financial Invoicing ---
+    // Rule: Guests can only access and query their own bookings/leases.
+    // Managers and staff collaborators can read all records to verify stay details, invoice and payments.
     match /bookings/{bookingId} {
-      allow get: if isSignedIn() && (resource.data.guestId == request.auth.uid || isAdmin());
-      allow list: if isSignedIn(); // Filter queries in app code
+      allow get: if isSignedIn() && (resource.data.guestId == request.auth.uid || isStaff() || isAdmin());
+      allow list: if isSignedIn(); // Queries are filtered client-side by guest ID or checked by staff constraints
       allow create: if isSignedIn() && isEmailVerified();
-      allow update: if isSignedIn() && (resource.data.guestId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (resource.data.guestId == request.auth.uid || isStaff() || isAdmin());
     }
 
-    // --- Chats ---
+    // --- Direct Customer Support Chats ---
+    // Rule: Messages are only visible to the sender and receipt participants of the chat sequence.
     match /chats/{messageId} {
       function isParticipant() {
         return isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
@@ -72,6 +100,38 @@ service cloud.firestore {
       allow read: if isParticipant();
       allow create: if isSignedIn() && incoming().senderId == request.auth.uid && isValidId(messageId);
       allow update: if isParticipant() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+    }
+
+    // --- Support & Maintenance Service Tickets ---
+    // Rule: Non-privileged users can ONLY see, create and update service/maintenance tickets that they own (userId matches request.auth.uid).
+    // They are completely forbidden from listing or retrieving other users' support complaints.
+    // Certified staff can access, update, reply to, and close tickets.
+    match /tickets/{ticketId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isStaff() || isAdmin());
+      allow create: if isSignedIn() && (incoming().userId == request.auth.uid || isStaff() || isAdmin());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isStaff() || isAdmin());
+      allow delete: if isStaff() || isAdmin();
+    }
+
+    // --- Staff Broadcast Messages & Bulletin Board ---
+    // Rule: Only workspace staff/administrators can see or post. Completely hidden from guests.
+    match /staff_messages/{messageId} {
+      allow read, create: if isStaff() || isAdmin();
+      allow update, delete: if isStaff() || isAdmin();
+    }
+
+    // --- Personal DM Messages between Staff & Users ---
+    // Rule: DM logs require authentication. Ensure message is readable by participants and writeable reliably.
+    match /staff_dms/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (incoming().senderId == request.auth.uid);
+      allow update, delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isStaff() || isAdmin());
+    }
+
+    // --- Global Parameters & Settings Panel ---
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isAdmin();
     }
   }
 }

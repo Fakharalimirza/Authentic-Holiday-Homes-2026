@@ -1,0 +1,65 @@
+========================================================================
+            PORTAL DATABASE CHANNELS & CPANEL MYSQL CONNECTIVITY
+========================================================================
+
+The Authentic Holiday Homes portal supports dual database options:
+1. Google Firebase Firestore (For serverless configurations)
+2. cPanel / Independent MySQL Database (For offline-ready web hosting)
+
+This guide walks you through connecting and configuring the database channels.
+
+------------------------------------------------------------------------
+1. CONFIGURING THE CPANEL MYSQL ENGINE
+------------------------------------------------------------------------
+To set up active database connections on cPanel, you need to tell the bridge
+to prefer MySQL. You do this by filling out these environment variables in your `.env`:
+
+    DB_HOST=localhost   (use full remote domain or server IP if external)
+    DB_NAME=your_db_name
+    DB_USER=your_db_username
+    DB_PASS=your_db_password
+    DB_PORT=3306
+
+Whenever `DB_HOST` is supplied and configured, the server automatically 
+diverts all operations (reads, updates, writes, deletions) from Firestore 
+and channels them into your MySQL tables.
+
+------------------------------------------------------------------------
+2. REGISTERING TABLE SCHEMAS (BOOTSTRAPPING)
+------------------------------------------------------------------------
+If setting up a brand new cPanel MySQL database, you need to create the tables.
+Use the pre-compiled schema SQL script located in the project root:
+
+    mysql-schema.sql
+
+1. Open your cPanel Dashboard.
+2. Select "phpMyAdmin" or "MySQL Databases".
+3. Inside your selected database target, navigate to the "Import" tab.
+4. Select `mysql-schema.sql` from your computer and execute.
+
+This sets up:
+* users: Profiles, roles, and wishlists
+* properties: Unit parameters, listings, and photos
+* bookings: Client registrations, payment logs, and check-in dates
+* secured_documents: Digital signatures & contracts
+* reviews: Property performance feedback
+* turnovers: Housekeeping tasks
+* tickets: Maintenance logs & requests
+* staff_messages: Real-time corporate staff messaging board
+* staff_dms: Direct corporate staff messages
+* invitations: Portal sign-up invitation tokens
+* settings: Global settings records
+* audit_logs: Activity logs for safety & transparency
+
+------------------------------------------------------------------------
+3. 1-CLICK FIRESTORE BACKUP & MIGRATION CONSOLE
+------------------------------------------------------------------------
+If you are transitioning your historical records from Firestore into 
+your new cPanel MySQL environment, you can migrate everything in seconds:
+
+1. Log into the portal with an Administrative Account.
+2. Open the Portal Control Center side-panel and select "Databases".
+3. Check that the MySQL Status Indicator shows "CONNECTED (cPanel MySQL)".
+4. Click on "Migrate Dataset" in the "1-Click Data Migration Tunnel".
+5. This runs an automatic API call that pulls all Firestore collection
+   items sequentially and inserts them cleanly into the MySQL database tables.

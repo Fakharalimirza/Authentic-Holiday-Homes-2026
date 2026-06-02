@@ -1,21 +1,39 @@
 import React from 'react';
+import { useGlobalSettings } from '../contexts/GlobalSettingsContext';
 
 interface CurrencySymbolProps {
   className?: string;
   size?: number | string;
 }
 
-export default function CurrencySymbol({ className = "", size = "1em" }: CurrencySymbolProps) {
-  return (
-    <span className={`inline-flex items-center ${className}`}>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 324.19 290.45" 
-        style={{ width: size, height: size, verticalAlign: 'middle', fill: 'currentColor' }}
+export default function CurrencySymbol({ className = "", size }: CurrencySymbolProps) {
+  const { settings } = useGlobalSettings();
+  const symbol = settings?.currencySymbol || 'AED';
+
+  if (symbol === 'AED') {
+    return (
+      <svg
+        id="UAEDirhamSymbol"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 344.84 299.91"
+        className={`inline-block select-none fill-current shrink-0 ${className}`}
+        style={{
+          width: 'auto',
+          height: size ? (typeof size === 'number' ? `${size}px` : size) : '1em',
+          verticalAlign: '-0.12em'
+        }}
       >
-        <metadata>CEED Dirham Currency Symbol | https://ceed.ae</metadata>
-        <path d="M324.19,196l-11.564-6.936-35.262.109c-4.33,19.185-12.015,36.87-24.215,52.285-52.205,65.958-150.381,44.876-223.958,48.532,2.849-4.499,5.761-8.708,7.763-13.727,1.821-4.565,5.237-16.258,5.237-20.763v-67.5c-.733-.266-1.196,1-1.5,1h-17c-.439,0-5.271-1.443-6.211-1.789C3.818,182.177-1.094,165.349.2,152c2.935,2.677,10.64,8,14.49,8h27.5v-29h-19.5c-2.219,0-9.47-3.846-11-5-1.53-1.154-2.25-11-2.25-11s.72-9.846,2.25-11c1.53-1.154,8.781-5,11-5h19.5v-29h-27.5c-3.85,0-11.555,5.323-14.49,8-.031-.1-.081-.2-.112-.3C-1.353,62.883,11.3,42.715,38.618,33l6.094-1.211l17.788-1.789l11.5,1s1.378-1.56,2.5-1.5c40,2.146,95.736,2.775,123.5,3.75,37.126,1.3,64.717,14,84.196,31C305.817,84,316,111.472,316.5,142c0,35.207-11.411,70.04-20.3,95.5l9.231,16.5,18.769,1c0,0,1,1.442,0,4.721C324.2,259.721,324.19,196,324.19,196ZM264.444,142c0-34.619-22.426-58.859-67-61c-30.825-1.481-91.875-1.258-130-3l-.119,7c0,.224.119,65,0,65v27l.119,64c38.125-1.742,99.175-1.519,130-3C242.018,236.859,264.444,212.619,264.444,178V142Z" />
+        <path d="M342.14,140.96l2.7,2.54v-7.72c0-17-11.92-30.84-26.56-30.84h-23.41C278.49,36.7,222.69,0,139.68,0c-52.86,0-59.65,0-109.71,0,0,0,15.03,12.63,15.03,52.4v52.58h-27.68c-5.38,0-10.43-2.08-14.61-6.01l-2.7-2.54v7.72c0,17.01,11.92,30.84,26.56,30.84h18.44s0,29.99,0,29.99h-27.68c-5.38,0-10.43-2.07-14.61-6.01l-2.7-2.54v7.71c0,17,11.92,30.82,26.56,30.82h18.44s0,54.89,0,54.89c0,38.65-15.03,50.06-15.03,50.06h109.71c85.62,0,139.64-36.96,155.38-104.98h32.46c5.38,0,10.43,2.07,14.61,6l2.7,2.54v-7.71c0-17-11.92-30.83-26.56-30.83h-18.9c.32-4.88.49-9.87.49-15s-.18-10.11-.51-14.99h28.17c5.37,0,10.43,2.07,14.61,6.01ZM89.96,15.01h45.86c61.7,0,97.44,27.33,108.1,89.94l-153.96.02V15.01ZM136.21,284.93h-46.26v-89.98l153.87-.02c-9.97,56.66-42.07,88.38-107.61,90ZM247.34,149.96c0,5.13-.11,10.13-.34,14.99l-157.04.02v-29.99l157.05-.02c.22,4.84.33,9.83.33,15Z" />
       </svg>
+    );
+  }
+
+  return (
+    <span 
+      className={`inline-flex items-center select-none font-sans font-bold ${className}`}
+      style={size ? { fontSize: size } : undefined}
+    >
+      {symbol}
     </span>
   );
 }

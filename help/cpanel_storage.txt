@@ -1,0 +1,54 @@
+========================================================================
+            CPANEL WEB SPACE STORAGE - MEDIA AND SECURE DOCUMENTS
+========================================================================
+
+The portal supports uploading listing pictures and secure PDF documents
+either to Google Cloud Storage (GCS) or directly to your cPanel hosting
+webspace (Option B) via automated FTP stream pipelines.
+
+------------------------------------------------------------------------
+1. ENABLING CPANEL HOSTED STORAGE (OPTION B)
+------------------------------------------------------------------------
+The backend utilizes the powerful `basic-ftp` package to upload media assets.
+To enable cPanel hosted storage, fill out the following items in your `.env`:
+
+   VPS_FTP_HOST=ftp.yourdomain.ae
+   VPS_FTP_USER=ftp_username@yourdomain.ae
+   VPS_FTP_PASS=your_ftp_password
+   VPS_FTP_PORT=21
+   VPS_FTP_SECURE=false             (set to true if your server supports FTPS/TLS)
+   VPS_FTP_REMOTE_DIR=public_html/uploads
+   VPS_MEDIA_BASE_URL=https://yourdomain.ae/uploads
+
+Once `VPS_FTP_HOST` is active, the applet bypasses GCS entirely and funnels
+all files directly to the target remote directory.
+
+------------------------------------------------------------------------
+2. IMAGE FORMAT OPTIMIZATION AUTOMATIONS
+------------------------------------------------------------------------
+When listing pictures are uploaded via the Admin Portal, the server on-the-fly
+processes them to optimize page-loading latency and bandwidth consumption:
+
+1. Dynamic WebP Conversion: Compressed with 80% quality using `sharp`
+   which reduces image sizes by up to 75% compared to raw photos.
+2. Fallback PNG Creation: Stored in high-compression format for raw legacy browsers.
+3. Transparent Streams: Sharp converts the photo buffer directly inside 
+   the Node memory space, then streams FTP packets to cPanel, eliminating
+   any potential local filesystem disk pollution or temporary file leakage on 
+   production servers.
+
+The final uploaded files are organized systematically:
+`<VPS_FTP_REMOTE_DIR>/<Unit Number - Building Name>/<Image_Index>_<Timestamp>.<ext>`
+
+------------------------------------------------------------------------
+3. SECURE DOCUMENTS ENCRYPTION & DIRECTORY SETUP
+------------------------------------------------------------------------
+For confidential items (such as lease agreements, ownership deeds, and customer
+passport IDs):
+
+1. Sanitize Directories: Folders inside your server's upload directories are
+   automatically sanitized dynamically (e.g. `public_html/uploads/<category>/<identifier>/`).
+2. Secure Filenames: A secure, unguessable 32-character cryptographic random token
+   is appended to every filename. This locks down predicting URLs and protects client privacy.
+3. Instant Return: The route responds with the public HTTP access link
+   pointing to the resource under the cPanel VPS base website domain.

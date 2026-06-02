@@ -3,17 +3,62 @@ import { Link } from 'react-router-dom';
 import { Heart, Star, MapPin, Maximize, Bed, Bath } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import CurrencySymbol from './CurrencySymbol';
 import { Property } from '../types';
 
 interface PropertyCardProps {
   property: Property;
+  userLat?: number;
+  userLng?: number;
   key?: React.Key;
 }
 
-export default function PropertyCard({ property }: PropertyCardProps) {
+export default function PropertyCard({ property, userLat, userLng }: PropertyCardProps) {
   const { t, lang } = useSettings();
+  const { user } = useAuth();
   const [isWishlisted, setIsWishlisted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (property.id) {
+      try {
+        const favs = JSON.parse(localStorage.getItem('ahh_favorites') || '[]');
+        setIsWishlisted(favs.includes(property.id));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [property.id]);
+
+  const toggleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!property.id) return;
+    try {
+      const favs = JSON.parse(localStorage.getItem('ahh_favorites') || '[]');
+      const isAlreadyFav = favs.includes(property.id);
+      let updated;
+      if (isAlreadyFav) {
+        updated = favs.filter((id: string) => id !== property.id);
+        setIsWishlisted(false);
+      } else {
+        updated = [...favs, property.id];
+        setIsWishlisted(true);
+      }
+      localStorage.setItem('ahh_favorites', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          wishlist: isAlreadyFav ? arrayRemove(property.id) : arrayUnion(property.id)
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const getPrimaryImage = () => {
     const imgs = property.images;
@@ -44,7 +89,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         </div>
 
         <button 
-          onClick={(e) => { e.preventDefault(); setIsWishlisted(!isWishlisted); }}
+          onClick={toggleWishlist}
           className="absolute top-4 right-4 p-2.5 bg-white/30 backdrop-blur-md rounded-full text-white hover:bg-white/50 transition-colors z-10"
         >
           <Heart 
@@ -75,9 +120,24 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           </div>
         </div>
         
-        <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-4">
-          <MapPin size={14} className="text-brand" />
-          <span className="truncate">{property.location.address}</span>
+        <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-4 justify-between">
+          <div className="flex items-center gap-1.5 truncate max-w-[75%]">
+            <MapPin size={14} className="text-brand flex-shrink-0" />
+            <span className="truncate">{property.location.address}</span>
+          </div>
+          {userLat !== undefined && userLng !== undefined && property.location?.lat && property.location?.lng && (
+            <span className="text-[9px] font-black text-brand uppercase tracking-wider bg-brand/5 dark:bg-brand/10 px-2 py-0.5 rounded-md flex-shrink-0">
+              {(() => {
+                const R = 6371; 
+                const dLat = (property.location.lat - userLat!) * (Math.PI / 180);
+                const dLon = (property.location.lng - userLng!) * (Math.PI / 180);
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(userLat! * (Math.PI / 180)) * Math.cos(property.location.lat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const d = R * c; 
+                return d.toFixed(1);
+              })()} km
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-2 py-4 border-t border-zinc-100 dark:border-zinc-800">

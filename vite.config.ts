@@ -10,10 +10,19 @@ export default defineConfig(({mode}) => {
     define: {
       'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(env.GOOGLE_MAPS_PLATFORM_KEY),
       'process.env.STRIPE_PUBLISHABLE_KEY': JSON.stringify(env.STRIPE_PUBLISHABLE_KEY),
+      'process.env.VPS_FTP_HOST': JSON.stringify(env.VPS_FTP_HOST),
+      'process.env.VPS_FTP_USER': JSON.stringify(env.VPS_FTP_USER),
+      'process.env.VPS_FTP_REMOTE_DIR': JSON.stringify(env.VPS_FTP_REMOTE_DIR),
+      'process.env.VPS_FTP_SECURE': JSON.stringify(env.VPS_FTP_SECURE),
+      'process.env.VPS_MEDIA_BASE_URL': JSON.stringify(env.VPS_MEDIA_BASE_URL),
     },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'firebase/app': path.resolve(__dirname, './src/lib/firebase.ts'),
+        'firebase/auth': path.resolve(__dirname, './src/lib/firebase.ts'),
+        'firebase/storage': path.resolve(__dirname, './src/lib/firebase.ts'),
+        'firebase/firestore': path.resolve(__dirname, './src/lib/firebase.ts'),
       },
     },
     server: {

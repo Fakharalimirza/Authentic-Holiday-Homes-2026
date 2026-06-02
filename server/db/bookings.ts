@@ -1,0 +1,71 @@
+import { query } from './connection';
+
+// --- BOOKINGS SECTION ---
+export async function saveBooking(id: string, booking: any): Promise<void> {
+  await query(`
+    INSERT INTO bookings (id, propertyId, propertyName, guestId, guestName, guestEmail, guestPhone, checkIn, checkOut, totalPrice, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      status = VALUES(status)
+  `, [
+    id,
+    booking.propertyId,
+    booking.propertyName || '',
+    booking.guestId || booking.userId || '',
+    booking.guestName || '',
+    booking.guestEmail || '',
+    booking.guestPhone || '',
+    booking.checkIn,
+    booking.checkOut,
+    booking.totalPrice || 0,
+    booking.status || 'pending'
+  ]);
+}
+
+export async function getAllBookings(): Promise<any[]> {
+  const rows = await query("SELECT * FROM bookings ORDER BY createdAt DESC");
+  return rows.map((row: any) => ({
+    id: row.id,
+    propertyId: row.propertyId,
+    propertyName: row.propertyName,
+    guestId: row.guestId,
+    guestName: row.guestName,
+    guestEmail: row.guestEmail,
+    guestPhone: row.guestPhone,
+    checkIn: row.checkIn ? new Date(row.checkIn).toISOString().split('T')[0] : '',
+    checkOut: row.checkOut ? new Date(row.checkOut).toISOString().split('T')[0] : '',
+    totalPrice: Number(row.totalPrice),
+    status: row.status,
+    createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
+  }));
+}
+
+export async function updateBookingStatus(id: string, status: string): Promise<void> {
+  await query("UPDATE bookings SET status = ? WHERE id = ?", [status, id]);
+}
+
+// --- TURNOVERS (CLEANING TASK) SECTION ---
+export async function saveTurnover(id: string, t: any): Promise<void> {
+  await query(`
+    INSERT INTO turnovers (id, bookingId, propertyTitle, scheduledDate, cleanerName, status, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      cleanerName = VALUES(cleanerName),
+      status = VALUES(status),
+      notes = VALUES(notes)
+  `, [id, t.bookingId, t.propertyTitle || '', t.scheduledDate, t.cleanerName || 'Unassigned', t.status || 'pending', t.notes || '']);
+}
+
+export async function getAllTurnovers(): Promise<any[]> {
+  const rows = await query("SELECT * FROM turnovers ORDER BY scheduledDate DESC");
+  return rows.map((row: any) => ({
+    id: row.id,
+    bookingId: row.bookingId,
+    propertyTitle: row.propertyTitle,
+    scheduledDate: row.scheduledDate ? new Date(row.scheduledDate).toISOString().split('T')[0] : '',
+    cleanerName: row.cleanerName,
+    status: row.status,
+    notes: row.notes,
+    createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
+  }));
+}

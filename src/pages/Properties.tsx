@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, MapPin, X, Star, LayoutGrid, List, Navigation } from 'lucide-react';
+import { Search, SlidersHorizontal, MapPin, X, Star, LayoutGrid, List, Navigation, Crosshair, ArrowUpDown, Check, Plus } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useGlobalSettings } from '../contexts/GlobalSettingsContext';
 import PropertyCard from '../components/PropertyCard';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Property } from '../types';
+import { useUserLocation } from '../hooks/useUserLocation';
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
 
 const MOCK_PROPERTIES: Property[] = [
   {
@@ -41,6 +55,9 @@ const MOCK_PROPERTIES: Property[] = [
 
 export default function Properties() {
   const { t, lang } = useSettings();
+  const { settings } = useGlobalSettings();
+  const availableCategories = settings?.availableCategories || ['Apartment', 'Villa', 'Penthouse', 'Townhouse', 'Holiday Home'];
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,9 +65,28 @@ export default function Properties() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Location Hub Setup
+  const { location, requestGPSLocation } = useUserLocation();
+  const [sortByProximity, setSortByProximity] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState('');
+
   // Filters State
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [minBedrooms, setMinBedrooms] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+
+  const POPULAR_AMENITIES = [
+    'Swimming Pool',
+    'Gym or Health Club',
+    'Centrally Air-Conditioned',
+    'Balcony or Terrace',
+    'Broadband Internet',
+    'Security Staff',
+    'CCTV Security',
+    'Pets Allowed'
+  ];
 
   useEffect(() => {
     async function fetchProperties() {
@@ -73,16 +109,45 @@ export default function Properties() {
   }, []);
 
   useEffect(() => {
-    const filtered = properties.filter(p => {
+    let filtered = properties.filter(p => {
       const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            p.location.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            p.buildingName?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPrice = (p.price || 0) >= priceRange[0] && (p.price || 0) <= priceRange[1];
       const matchesBeds = (p.bedrooms || 0) >= minBedrooms;
-      return matchesSearch && matchesPrice && matchesBeds;
+      const matchesCategory = !selectedCategory || (p.category && p.category.toLowerCase() === selectedCategory.toLowerCase());
+      
+      const matchesAmenities = selectedAmenities.every(amenity => {
+        if (!p.amenities) return false;
+        return Object.values(p.amenities).some(arr => Array.isArray(arr) && arr.includes(amenity));
+      });
+
+      return matchesSearch && matchesPrice && matchesBeds && matchesCategory && matchesAmenities;
     });
+
+    if (sortByProximity && location && typeof location.lat === 'number' && typeof location.lng === 'number') {
+      filtered = [...filtered].sort((a, b) => {
+        const distA = calculateDistance(location.lat!, location.lng!, a.location.lat, a.location.lng);
+        const distB = calculateDistance(location.lat!, location.lng!, b.location.lat, b.location.lng);
+        return distA - distB;
+      });
+    }
+
     setFilteredProperties(filtered);
-  }, [searchQuery, priceRange, minBedrooms, properties]);
+  }, [searchQuery, priceRange, minBedrooms, selectedCategory, selectedAmenities, properties, sortByProximity, location]);
+
+  const handleGpsActivation = async () => {
+    setGpsLoading(true);
+    setGpsError('');
+    try {
+      await requestGPSLocation();
+      setSortByProximity(true);
+    } catch (err: any) {
+      setGpsError(err || 'Failed to acquire fine location.');
+    } finally {
+      setGpsLoading(false);
+    }
+  };
 
   const getPrimaryImage = (p: Property) => {
     const imgs = p.images;
@@ -151,63 +216,189 @@ export default function Properties() {
               exit={{ height: 0, opacity: 0, scale: 0.95 }}
               className="overflow-hidden mb-12 origin-top"
             >
-              <div className="p-10 bg-white dark:bg-zinc-900 rounded-[3rem] border border-zinc-100 dark:border-zinc-800 shadow-2xl grid grid-cols-1 md:grid-cols-3 gap-12">
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Price Range (AED)</h4>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 space-y-2">
-                       <input 
+              <div className="p-6 md:p-8 bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-150 dark:border-zinc-800 shadow-2xl space-y-6">
+                <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-4 md:gap-6">
+                  {/* Categories Dropdown */}
+                  <div className="flex flex-col gap-1.5 w-full md:w-auto md:min-w-[180px]">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Categories</h4>
+                    <select
+                      value={selectedCategory || ''}
+                      onChange={(e) => setSelectedCategory(e.target.value || null)}
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 outline-none focus:border-brand cursor-pointer"
+                    >
+                      <option value="">All Categories</option>
+                      {availableCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Rooms Dropdown */}
+                  <div className="flex flex-col gap-1.5 w-full md:w-auto md:min-w-[140px]">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Rooms</h4>
+                    <select
+                      value={minBedrooms}
+                      onChange={(e) => setMinBedrooms(parseInt(e.target.value) || 0)}
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 outline-none focus:border-brand cursor-pointer"
+                    >
+                      <option value={0}>Any Bedrooms</option>
+                      <option value={1}>1+ Bedroom</option>
+                      <option value={2}>2+ Bedrooms</option>
+                      <option value={3}>3+ Bedrooms</option>
+                      <option value={4}>4+ Bedrooms</option>
+                    </select>
+                  </div>
+
+                  {/* Price Range */}
+                  <div className="flex flex-col gap-1.5 flex-1 w-full">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Price Range (AED)</h4>
+                    <div className="flex items-center gap-3">
+                      <input 
                         type="number" 
                         placeholder="Min"
-                        value={priceRange[0]} 
+                        value={priceRange[0] || ''} 
                         onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-brand transition-all"
-                       />
-                    </div>
-                    <div className="flex-1 space-y-2">
-                       <input 
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-brand text-zinc-750 dark:text-white"
+                      />
+                      <span className="text-zinc-400 text-xs font-bold shrink-0">—</span>
+                      <input 
                         type="number" 
                         placeholder="Max"
-                        value={priceRange[1]} 
+                        value={priceRange[1] || ''} 
                         onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 0])}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-brand transition-all"
-                       />
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-brand text-zinc-750 dark:text-white"
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Rooms</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {[0, 1, 2, 3, 4].map(num => (
+                {/* Advanced Amenities Section */}
+                <div className="border-t border-zinc-100 dark:border-zinc-800/60 pt-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Filter by Amenities</h4>
+                    {selectedAmenities.length > 0 && (
                       <button 
-                        key={num}
-                        onClick={() => setMinBedrooms(num)}
-                        className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center font-black text-sm transition-all ${minBedrooms === num ? 'bg-brand border-brand text-white shadow-lg' : 'bg-transparent border-zinc-100 dark:border-zinc-800 text-zinc-500 hover:border-brand/30'}`}
+                        onClick={() => setSelectedAmenities([])}
+                        className="text-[9px] font-black uppercase text-brand hover:underline transition-all cursor-pointer"
                       >
-                        {num === 0 ? 'ALL' : `${num}+`}
+                        Reset Amenities
                       </button>
-                    ))}
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {POPULAR_AMENITIES.map(amenity => {
+                      const isSelected = selectedAmenities.includes(amenity);
+                      return (
+                        <button
+                          key={amenity}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAmenities(prev => 
+                              prev.includes(amenity)
+                                ? prev.filter(a => a !== amenity)
+                                : [...prev, amenity]
+                            );
+                          }}
+                          className={`px-3 py-2 rounded-xl text-[9px] font-bold uppercase tracking-tight border transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isSelected 
+                              ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow'
+                              : 'bg-zinc-55 hover:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900 border-zinc-200 dark:border-zinc-850 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {isSelected ? <Check size={10} strokeWidth={4} /> : <Plus size={10} className="text-zinc-400" />}
+                          <span>{amenity}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Categories</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {['Villa', 'Penthouse', 'Apartment'].map(cat => (
-                      <button 
-                        key={cat}
-                        className="px-6 py-3 bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-brand hover:border-brand transition-all"
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
+                {/* Footer Controls */}
+                <div className="flex justify-end pt-3 border-t border-zinc-100 dark:border-zinc-800/40">
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setPriceRange([0, 100000]);
+                      setMinBedrooms(0);
+                      setSelectedCategory(null);
+                      setSelectedAmenities([]);
+                    }}
+                    className="px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-850 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-750 hover:border-zinc-300 rounded-2xl text-[9px] font-black uppercase tracking-wider text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-all cursor-pointer flex items-center gap-1.5 animate-fade-in"
+                  >
+                    <X size={10} />
+                    Reset All Filters
+                  </button>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* User Geolocation Status Hub - Ultra-compact, elegant and scannable */}
+        <div className="mb-6 p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl shrink-0 ${
+              location?.source === 'gps' 
+                ? 'bg-brand/10 text-brand' 
+                : 'bg-zinc-200/50 dark:bg-zinc-800 text-zinc-500'
+            }`}>
+              <MapPin size={16} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-zinc-900 dark:text-white capitalize">
+                  {location?.city || 'Dubai'}, {location?.country || 'United Arab Emirates'}
+                </span>
+                <span className={`inline-flex items-center px-1.5 py-0.25 rounded text-[8px] font-black uppercase ${
+                  location?.source === 'gps'
+                    ? 'bg-brand text-white animate-pulse'
+                    : 'bg-zinc-200 dark:bg-zinc-850 text-zinc-650 dark:text-zinc-350'
+                }`}>
+                  {location?.source === 'gps' ? 'GPS' : 'IP'}
+                </span>
+                {location?.isProxyOrVpn && (
+                  <span className="inline-flex items-center px-1.5 py-0.25 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/30" title="VPN detected: coordinates match fallback or server origin.">
+                    Proxy/VPN
+                  </span>
+                )}
+              </div>
+              {gpsError ? (
+                <p className="text-[9px] font-bold text-red-500 mt-0.5 uppercase tracking-wider">{gpsError}</p>
+              ) : (
+                <p className="text-[10px] text-zinc-400 mt-0.5 leading-snug">
+                  {location?.isProxyOrVpn 
+                    ? "VPN detected. Use GPS for accurate local recommendation distances." 
+                    : "Nearest properties are calculated with dynamic physical network coordinates."}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0 shrink-0">
+            {location?.lat !== undefined && location?.lng !== undefined && (
+              <button
+                onClick={() => setSortByProximity(!sortByProximity)}
+                className={`flex-1 md:flex-initial px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                  sortByProximity 
+                    ? 'bg-brand border-brand text-white shadow-sm' 
+                    : 'bg-white dark:bg-zinc-800 text-zinc-750 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-750'
+                }`}
+              >
+                <ArrowUpDown size={12} />
+                {sortByProximity ? "Sorted" : "Sort By Distance"}
+              </button>
+            )}
+
+            <button
+              onClick={handleGpsActivation}
+              disabled={gpsLoading}
+              className="flex-1 md:flex-initial px-4 py-2.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-xl font-black text-[9px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              <Crosshair size={12} className={gpsLoading ? 'animate-spin' : ''} />
+              {gpsLoading ? 'Tracking...' : 'Use Precise GPS'}
+            </button>
+          </div>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -243,9 +434,16 @@ export default function Properties() {
                     <div className="flex-1 flex flex-col justify-between py-2">
                        <div className="space-y-4">
                           <Link to={`/property/${property.id}`}><h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-tight hover:text-brand transition-colors">{property.title}</h3></Link>
-                          <div className="flex items-center gap-2 text-zinc-400 font-bold">
-                            <MapPin size={18} className="text-brand" />
-                            <span className="text-sm">{property.location.address}</span>
+                          <div className="flex items-center gap-2 text-zinc-400 font-bold justify-between">
+                            <div className="flex items-center gap-2 truncate max-w-[75%]">
+                              <MapPin size={18} className="text-brand flex-shrink-0" />
+                              <span className="text-sm truncate">{property.location.address}</span>
+                            </div>
+                            {location?.lat !== undefined && location?.lng !== undefined && (
+                              <span className="text-[10px] font-black text-brand uppercase tracking-wider bg-brand/10 dark:bg-brand/20 px-3 py-1 rounded-xl flex-shrink-0">
+                                {calculateDistance(location.lat, location.lng, property.location.lat, property.location.lng).toFixed(1)} km away
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-wrap gap-2 pt-2">
                             {Object.values(property.amenities || {}).flat().slice(0, 6).map((a: any) => (
@@ -265,7 +463,7 @@ export default function Properties() {
                     </div>
                   </>
                 ) : (
-                  <PropertyCard property={property} />
+                  <PropertyCard property={property} userLat={location?.lat} userLng={location?.lng} />
                 )}
               </motion.div>
             ))}

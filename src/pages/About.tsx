@@ -37,13 +37,14 @@ const SectionHeader = ({ title, subtitle }: { title: string, subtitle: string })
 const TeamCarousel = ({ members, speed = 30, small = false }: { members: any[], speed?: number, small?: boolean }) => {
   const { lang } = useSettings();
   const isRtl = lang === 'ar';
+  const [isPaused, setIsPaused] = React.useState(false);
   
   // Double members for seamless loop
   const displayMembers = [...members, ...members, ...members, ...members];
   const carouselId = React.useId().replace(/:/g, '');
   
   return (
-    <div className="relative overflow-hidden py-4">
+    <div className="relative overflow-hidden py-4 group/carousel">
       <style>{`
         @keyframes marquee-${carouselId} {
           from { transform: translateX(${isRtl ? '-50%' : '0%'}); }
@@ -53,12 +54,20 @@ const TeamCarousel = ({ members, speed = 30, small = false }: { members: any[], 
           display: flex;
           width: fit-content;
           animation: marquee-${carouselId} ${speed}s linear infinite;
+          animation-play-state: ${isPaused ? 'paused' : 'running'};
         }
         .marquee-${carouselId}:hover {
           animation-play-state: paused;
         }
+        .marquee-${carouselId}:active {
+          animation-play-state: paused;
+        }
       `}</style>
-      <div className={`marquee-${carouselId}`}>
+      <div 
+        className={`marquee-${carouselId}`}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
+      >
         {displayMembers.map((member, i) => (
           <TeamCard key={i} {...member} small={small} />
         ))}
@@ -144,7 +153,7 @@ export default function About() {
               className="relative aspect-square rounded-[3rem] overflow-hidden group shadow-2xl"
             >
               <img 
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800" 
+                src="/ceo.webp" 
                 alt="Ahmed Al Doulah - CEO" 
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
               />
@@ -222,7 +231,7 @@ export default function About() {
               className="relative aspect-square w-full lg:w-1/2 rounded-[3rem] overflow-hidden group shadow-2xl"
             >
               <img 
-                src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800" 
+                src="/manager.webp" 
                 alt="Mohammad Al Doulah - Manager" 
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
               />
@@ -293,7 +302,7 @@ export default function About() {
             <a href="tel:+971569969332" className="px-10 py-5 bg-white text-brand rounded-full font-bold text-lg hover:scale-105 active:scale-95 transition-all shadow-xl">
               {t('call_us_today')}
             </a>
-            <Link to="/contact" className="px-10 py-5 border-2 border-white/30 text-white rounded-full font-bold text-lg hover:bg-white hover:text-brand transition-all">
+            <Link to="/list-your-property" className="px-10 py-5 border-2 border-white/30 text-white rounded-full font-bold text-lg hover:bg-white hover:text-brand transition-all">
               {t('list_your_property')}
             </Link>
           </div>

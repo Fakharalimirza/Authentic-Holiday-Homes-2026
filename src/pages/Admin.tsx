@@ -1,113 +1,203 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../lib/firebase';
-import CurrencySymbol from '../components/CurrencySymbol';
-import { Plus, Edit, Trash2, Home, BookOpen, X, Check, Search, Filter, Shield, Upload, Loader2, PlusCircle, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Property } from '../types';
 import { ref, deleteObject } from 'firebase/storage';
+import { 
+  Search, 
+  PlusCircle, 
+  LayoutDashboard, 
+  Building2, 
+  CalendarRange, 
+  Wrench, 
+  LifeBuoy, 
+  FolderKey, 
+  CreditCard, 
+  MessageSquare, 
+  Users, 
+  UserPlus, 
+  History, 
+  Database, 
+  Settings,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  ArrowRight,
+  TrendingUp,
+  Clock,
+  Shield,
+  Activity,
+  ArrowUpRight,
+  CheckCircle,
+  HelpCircle,
+  AlertCircle,
+  Check,
+  Key
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
+import { Property } from '../types';
+import { logActivity } from '../lib/auditLogger';
 
-const AMENITY_CATEGORIES = {
-  features: ['Furnished', 'Electricity Backup', 'Parking Spaces: 1', 'Centrally Air-Conditioned'],
-  building: ['Balcony or Terrace', 'Lobby in Building', 'Service Elevators', 'Reception/Waiting Room'],
-  healthFitness: ['Gym or Health Club', 'Swimming Pool'],
-  recreationFamily: ['Kids Play Area', 'Lawn or Garden', 'Barbeque Area'],
-  cleaningMaintenance: ['Waste Disposal', 'Maintenance Staff'],
-  businessSecurity: ['Business Center', 'Security Staff', 'CCTV Security'],
-  technology: ['Broadband Internet', 'Satellite/Cable TV'],
-  miscellaneous: ['24 Hours Concierge', 'Pets Allowed', 'Freehold']
-};
-
-interface PropertyForm {
-  title: string;
-  category: string;
-  description: string;
-  price: number;
-  unitNumber: string;
-  buildingName: string;
-  referenceNo: string;
-  purpose: 'For Rent' | 'For Sale';
-  furnishing: 'Furnished' | 'Unfurnished';
-  size: number;
-  address: string;
-  lat: number;
-  lng: number;
-  maxGuests: number;
-  bedrooms: number;
-  bathrooms: number;
-  amenities: {
-    features: string[];
-    building: string[];
-    healthFitness: string[];
-    recreationFamily: string[];
-    cleaningMaintenance: string[];
-    businessSecurity: string[];
-    technology: string[];
-    miscellaneous: string[];
-  };
-  imageFiles: File[];
-  imageUrls: {
-    avif: string[];
-    webp: string[];
-    png: string[];
-  };
-  rating: number;
-  isAvailable: boolean;
-}
+// Importing Admin Modular Components
+import AccessDenied from './admin/AccessDenied';
+import AdminStats from './admin/AdminStats';
+import BookingsTable from './admin/BookingsTable';
+import DeleteConfirmationModal from './admin/DeleteConfirmationModal';
+import PropertiesTable from './admin/PropertiesTable';
+import PropertyFormModal from './admin/PropertyFormModal';
+import { PropertyForm, getInitialForm } from './admin/types';
+import BookingConsole from './admin/bookings/BookingConsole';
+import SettingsPanel from './admin/SettingsPanel';
+import UsersTable from './admin/UsersTable';
+import TurnoversTable from './admin/TurnoversTable';
+import TicketsConsole from './admin/TicketsConsole';
+import PaymentsConsole from './admin/PaymentsConsole';
+import StaffChat from './admin/StaffChat';
+import DocumentsConsole from './admin/DocumentsConsole';
+import InvitationsConsole from './admin/InvitationsConsole';
+import AuditLogsConsole from './admin/AuditLogsConsole';
+import DatabaseConsole from './admin/DatabaseConsole';
+import LandlordsConsole from './admin/LandlordsConsole';
+import BuildingsConsole from './admin/BuildingsConsole';
+import UnitsConsole from './admin/UnitsConsole';
 
 export default function Admin() {
   const { user, profile, loading: authLoading } = useAuth();
   const { t, lang } = useSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'properties' | 'bookings'>('properties');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const initialForm: PropertyForm = {
-    title: '',
-    category: 'Apartment',
-    description: '',
-    price: 0,
-    unitNumber: '',
-    buildingName: '',
-    referenceNo: `AHH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-    purpose: 'For Rent',
-    furnishing: 'Furnished',
-    size: 0,
-    address: '',
-    lat: 25.2048,
-    lng: 55.2708,
-    maxGuests: 2,
-    bedrooms: 1,
-    bathrooms: 1,
-    amenities: {
-      features: [],
-      building: [],
-      healthFitness: [],
-      recreationFamily: [],
-      cleaningMaintenance: [],
-      businessSecurity: [],
-      technology: [],
-      miscellaneous: []
-    },
-    imageFiles: [],
-    imageUrls: { avif: [], webp: [], png: [] },
-    rating: 5.0,
-    isAvailable: true
+  // Quick state for simple local-time dynamic greeting
+  const [timeOfDay, setTimeOfDay] = useState<string>('day');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setTimeOfDay('morning');
+    else if (hour < 18) setTimeOfDay('afternoon');
+    else setTimeOfDay('evening');
+  }, []);
+
+  const getTabsList = () => {
+    const list: { id: string; label: string; icon: any; category: string }[] = [];
+    const isDeveloper = user?.email?.toLowerCase() === 'fakharalimirza@gmail.com';
+    const role = isDeveloper ? 'super_admin' : (profile?.role || 'guest');
+    
+    // Dashboard overview
+    list.push({ id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard, category: 'Main Console' });
+
+    // Properties tab
+    if (['super_admin', 'admin', 'agent', 'landlord', 'host'].includes(role)) {
+      list.push({ id: 'properties', label: 'Properties & Units', icon: Building2, category: 'Main Console' });
+    }
+    
+    // Bookings tab
+    if (['super_admin', 'admin', 'agent', 'host'].includes(role)) {
+      list.push({ id: 'bookings', label: 'Reservations Console', icon: CalendarRange, category: 'Main Console' });
+    }
+    
+    // Turnovers / Maintenance tab
+    if (['super_admin', 'admin', 'maintenance', 'host'].includes(role)) {
+      list.push({ id: 'maintenance', label: 'Turnovers & Cleaning', icon: Wrench, category: 'Main Console' });
+    }
+    
+    // Support Tickets tab - visible to guests, landlords, admins, etc.
+    list.push({ id: 'support', label: 'Support Desk', icon: LifeBuoy, category: 'Communications' });
+
+    // Secure Document Vault - visible to administrative & landlord roles
+    if (['super_admin', 'admin', 'agent', 'host', 'landlord'].includes(role)) {
+      list.push({ id: 'documents', label: 'Secure Documents', icon: FolderKey, category: 'Workspace & File Storage' });
+    }
+
+    // Payments tab - visible to guests, landlords, admins, etc.
+    list.push({ id: 'payments', label: 'Payments Ledger', icon: CreditCard, category: 'Workspace & File Storage' });
+
+    // Staff Chat tab - visible to actual workspace staff roles
+    if (['super_admin', 'admin', 'agent', 'maintenance', 'host'].includes(role)) {
+      list.push({ id: 'staff_chat', label: 'Internal Staff Chat', icon: MessageSquare, category: 'Communications' });
+    }
+    
+    // Users tab
+    if (['super_admin', 'admin', 'host'].includes(role)) {
+      list.push({ id: 'landlords', label: 'Landlords & Owners', icon: Users, category: 'Real Estate Administration' });
+      list.push({ id: 'buildings', label: 'Buildings & Properties', icon: Building2, category: 'Real Estate Administration' });
+      list.push({ id: 'units', label: 'Units Inventory', icon: Key, category: 'Real Estate Administration' });
+      list.push({ id: 'users', label: 'Member Roles (RBAC)', icon: Users, category: 'Access Administration' });
+    }
+    
+    // Global Settings tab
+    if (['super_admin', 'admin', 'host'].includes(role)) {
+      list.push({ id: 'invitations', label: 'Invitations Roster', icon: UserPlus, category: 'Access Administration' });
+      list.push({ id: 'audit_logs', label: 'Staff Audit Trail', icon: History, category: 'System Maintenance' });
+      list.push({ id: 'database', label: 'cPanel DB Service', icon: Database, category: 'System Maintenance' });
+      list.push({ id: 'settings', label: 'Global Settings', icon: Settings, category: 'System Maintenance' });
+    }
+    
+    return list;
   };
 
-  const [form, setForm] = useState<PropertyForm>(initialForm);
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    const qTab = searchParams.get('tab');
+    return qTab || 'overview';
+  });
 
+  const setActiveTab = (tabId: string) => {
+    setActiveTabState(tabId);
+    const newParams: Record<string, string> = { tab: tabId };
+    const chatUser = searchParams.get('chatUser');
+    if (chatUser && tabId === 'staff_chat') {
+      newParams.chatUser = chatUser;
+    }
+    const ticketId = searchParams.get('ticketId');
+    if (ticketId && tabId === 'support') {
+      newParams.ticketId = ticketId;
+    }
+    setSearchParams(newParams);
+    setIsMobileMenuOpen(false); // Close slider on tap
+  };
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      const tabsList = getTabsList();
+      if (tabsList.some(t => t.id === tab)) {
+        setActiveTabState(tab);
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const tabsList = getTabsList();
+    if (tabsList.length > 0 && !tabsList.find(t => t.id === activeTab)) {
+      setActiveTabState(tabsList[0].id);
+    }
+  }, [profile?.role]);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
   const [showAllAsAdmin, setShowAllAsAdmin] = useState(true);
+
+  // Stats numerical state
   const [stats, setStats] = useState({ totalRevenue: 0, pendingBookings: 0, activeProperties: 0 });
-  const [uploadingStates, setUploadingStates] = useState<{ [key: string]: 'uploading' | 'completed' | 'error' }>({});
+
+  // Modals visibility state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [initialFormToEdit, setInitialFormToEdit] = useState<PropertyForm | null>(null);
+
+  // Deletion operation state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [consoleSuccess, setConsoleSuccess] = useState('');
+  const [consoleError, setConsoleError] = useState('');
 
   const filteredProperties = (properties || []).filter(p => 
     (p.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -126,9 +216,9 @@ export default function Admin() {
     if (!user) return;
     setLoading(true);
     try {
-      const isAdminEmail = user.email?.toLowerCase() === 'fakharalimirza@gmail.com';
+      const isSystemAdmin = ['super_admin', 'admin', 'host'].includes(profile?.role || '') || user.email?.toLowerCase() === 'fakharalimirza@gmail.com';
       let q;
-      if (isAdminEmail && showAllAsAdmin) {
+      if (isSystemAdmin && showAllAsAdmin) {
         q = query(collection(db, 'properties'));
       } else {
         q = query(collection(db, 'properties'), where('hostId', '==', user.uid));
@@ -145,7 +235,7 @@ export default function Admin() {
       
       calculateStats(props, booked);
     } catch (err) {
-      console.error(err);
+      console.error("Admin: Error fetching dataset:", err);
     } finally {
       setLoading(false);
     }
@@ -153,209 +243,134 @@ export default function Admin() {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, profile?.role, showAllAsAdmin]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
-    if (files.length === 0) return;
-
-    if (!form.unitNumber || !form.buildingName) {
-      alert("Please enter Unit Number and Building Name first so we can organize your images.");
-      return;
-    }
-
-    // Add to local state first to show placeholders
-    setForm(prev => ({ ...prev, imageFiles: [...prev.imageFiles, ...files] }));
-
-    // Start uploads immediately for each file
-    for (const file of files) {
-      const fileId = `${file.name}-${file.size}-${Date.now()}`;
-      setUploadingStates(prev => ({ ...prev, [fileId]: 'uploading' }));
-
-      const formData = new FormData();
-      formData.append('images', file);
-      formData.append('unitNumber', form.unitNumber);
-      formData.append('buildingName', form.buildingName);
-
-      try {
-        const response = await fetch('/api/admin/upload-property-images', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) throw new Error('Upload failed');
-        
-        const data = await response.json();
-        const imageSet = data.images[0]; // Since we sent one file
-
-        // Update form with returned URLs
-        setForm(prev => {
-          const avif = [...prev.imageUrls.avif];
-          const webp = [...prev.imageUrls.webp];
-          const png = [...prev.imageUrls.png];
-
-          imageSet.forEach((img: any) => {
-            if (img.format === 'avif') avif.push(img.url);
-            if (img.format === 'webp') webp.push(img.url);
-            if (img.format === 'png') png.push(img.url);
-          });
-
-          return {
-            ...prev,
-            imageUrls: { avif, webp, png }
-          };
-        });
-
-        setUploadingStates(prev => ({ ...prev, [fileId]: 'completed' }));
-      } catch (err) {
-        console.error('Individual upload error:', err);
-        setUploadingStates(prev => ({ ...prev, [fileId]: 'error' }));
-      }
-    }
-  };
-
-  const uploadImages = async (): Promise<{ avif: string[], webp: string[], png: string[] }> => {
-    // Now just returns the already uploaded URLs
-    return form.imageUrls;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setIsUploading(true);
-
-    try {
-      const imageUrls = await uploadImages();
-
-      const propertyData: any = {
-        title: form.title,
-        category: form.category,
-        description: form.description,
-        price: Number(form.price),
-        unitNumber: form.unitNumber,
-        buildingName: form.buildingName,
-        referenceNo: form.referenceNo,
-        purpose: form.purpose,
-        furnishing: form.furnishing,
-        size: Number(form.size),
-        maxGuests: Number(form.maxGuests),
-        bedrooms: Number(form.bedrooms),
-        bathrooms: Number(form.bathrooms),
-        amenities: form.amenities,
-        location: {
-          address: form.address,
-          lat: Number(form.lat),
-          lng: Number(form.lng)
-        },
-        images: imageUrls,
-        rating: Number(form.rating || 5.0),
-        isAvailable: form.isAvailable ?? true,
-        updatedAt: serverTimestamp()
-      };
-
-      if (editingId) {
-        console.log("Admin: Updating property", editingId, propertyData);
-        await updateDoc(doc(db, 'properties', editingId), propertyData);
-        alert("Property updated successfully!");
-      } else {
-        propertyData.hostId = user.uid;
-        propertyData.reviewCount = 0;
-        propertyData.createdAt = serverTimestamp();
-        console.log("Admin: Adding new property", propertyData);
-        await addDoc(collection(db, 'properties'), propertyData);
-        alert("Property published successfully!");
-      }
-      
-      setIsModalOpen(false);
-      setEditingId(null);
-      setForm(initialForm);
-      setUploadingStates({});
-      fetchData();
-    } catch (err) {
-      console.error("Admin: Error saving property:", err);
-      alert("Error saving property: " + (err as Error).message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const toggleAvailability = async (id: string, current: boolean) => {
-    try {
-      await updateDoc(doc(db, 'properties', id), { isAvailable: !current });
-      setProperties(prev => prev.map(p => p.id === id ? { ...p, isAvailable: !current } : p));
-      await fetchData();
-    } catch (err) {
-      console.error("Error toggling availability:", err);
-      alert("Failed to update availability: " + (err as Error).message);
-    }
-  };
-
-  const handleDuplicate = (p: Property) => {
+  const handleAddNew = () => {
     setEditingId(null);
-    setUploadingStates({});
-    setForm({
-      title: `${p.title} (Copy)`,
-      category: p.category || 'Apartment',
-      description: p.description || '',
-      price: p.price,
-      unitNumber: '',
-      buildingName: p.buildingName || '',
-      referenceNo: `AHH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-      purpose: p.purpose || 'For Rent',
-      furnishing: p.furnishing || 'Furnished',
-      size: p.size || 0,
-      address: p.location.address,
-      lat: p.location.lat,
-      lng: p.location.lng,
-      maxGuests: p.maxGuests || 2,
-      bedrooms: p.bedrooms || 1,
-      bathrooms: p.bathrooms || 1,
-      amenities: p.amenities || initialForm.amenities,
-      imageFiles: [],
-      imageUrls: p.images || initialForm.imageUrls,
-      rating: p.rating || 5.0,
-      isAvailable: true
-    });
+    setInitialFormToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCreateListingFromUnit = (unit: any, buildingName: string, buildingAddress: string) => {
+    const initialForm: PropertyForm = {
+      ...getInitialForm(),
+      title: `${buildingName} - Unit ${unit.unitNumber}`,
+      category: unit.unitType || 'Apartment',
+      description: unit.description || `Premium holiday home residence unit located at ${buildingName}. Fully equipped for comfortable, state-of-the-art living.`,
+      price: unit.price || 0,
+      unitNumber: unit.unitNumber,
+      buildingName: buildingName,
+      referenceNo: `AHH-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,
+      address: buildingAddress || '',
+      bedrooms: unit.bedrooms || 1,
+      bathrooms: unit.bathrooms || 1,
+      size: unit.size || 0,
+      furnishing: unit.furnishing === 'Semi-Furnished' ? 'Furnished' : (unit.furnishing as any),
+      landlordId: unit.landlordId || '',
+      buildingId: unit.buildingId || '',
+      isAvailable: true,
+      maxGuests: unit.guestCapacity || 2,
+    };
+    setEditingId(null);
+    setInitialFormToEdit(initialForm);
+    setActiveTab('properties');
     setIsModalOpen(true);
   };
 
   const handleEdit = (p: Property) => {
     setEditingId(p.id);
-    setUploadingStates({});
-    setForm({
-      title: p.title,
+    setInitialFormToEdit({
+      title: p.title || '',
       category: p.category || 'Apartment',
       description: p.description || '',
-      price: p.price,
+      price: p.price || 0,
       unitNumber: p.unitNumber || '',
       buildingName: p.buildingName || '',
-      referenceNo: p.referenceNo || `AHH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      referenceNo: p.referenceNo || `AHH-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,
       purpose: p.purpose || 'For Rent',
       furnishing: p.furnishing || 'Furnished',
       size: p.size || 0,
-      address: p.location.address,
-      lat: p.location.lat,
-      lng: p.location.lng,
+      address: p.location?.address || '',
+      lat: p.location?.lat || 25.2048,
+      lng: p.location?.lng || 55.2708,
       maxGuests: p.maxGuests || 2,
       bedrooms: p.bedrooms || 1,
       bathrooms: p.bathrooms || 1,
-      amenities: p.amenities || initialForm.amenities,
+      amenities: {
+        features: p.amenities?.features || [],
+        building: p.amenities?.building || [],
+        healthFitness: p.amenities?.healthFitness || [],
+        recreationFamily: p.amenities?.recreationFamily || [],
+        cleaningMaintenance: p.amenities?.cleaningMaintenance || [],
+        businessSecurity: p.amenities?.businessSecurity || [],
+        technology: p.amenities?.technology || [],
+        miscellaneous: p.amenities?.miscellaneous || [],
+      },
       imageFiles: [],
-      imageUrls: p.images || initialForm.imageUrls,
+      imageUrls: p.images || { avif: [], webp: [], png: [] },
       rating: p.rating || 5.0,
       isAvailable: p.isAvailable ?? true
     });
     setIsModalOpen(true);
   };
 
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const handleDuplicate = (p: Property) => {
+    setEditingId(null);
+    setInitialFormToEdit({
+      title: p.title ? `${p.title} (Copy)` : 'New Copy',
+      category: p.category || 'Apartment',
+      description: p.description || '',
+      price: p.price || 0,
+      unitNumber: '',
+      buildingName: p.buildingName || '',
+      referenceNo: `AHH-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,
+      purpose: p.purpose || 'For Rent',
+      furnishing: p.furnishing || 'Furnished',
+      size: p.size || 0,
+      address: p.location?.address || '',
+      lat: p.location?.lat || 25.2048,
+      lng: p.location?.lng || 55.2708,
+      maxGuests: p.maxGuests || 2,
+      bedrooms: p.bedrooms || 1,
+      bathrooms: p.bathrooms || 1,
+      amenities: {
+        features: p.amenities?.features || [],
+        building: p.amenities?.building || [],
+        healthFitness: p.amenities?.healthFitness || [],
+        recreationFamily: p.amenities?.recreationFamily || [],
+        cleaningMaintenance: p.amenities?.cleaningMaintenance || [],
+        businessSecurity: p.amenities?.businessSecurity || [],
+        technology: p.amenities?.technology || [],
+        miscellaneous: p.amenities?.miscellaneous || [],
+      },
+      imageFiles: [],
+      imageUrls: p.images || { avif: [], webp: [], png: [] },
+      rating: p.rating || 5.0,
+      isAvailable: true
+    });
+    setIsModalOpen(true);
+  };
+
+  const toggleAvailability = async (id: string, current: boolean) => {
+    try {
+      const prop = properties.find(p => p.id === id);
+      await updateDoc(doc(db, 'properties', id), { isAvailable: !current });
+      logActivity('TOGGLE_AVAILABILITY', `Toggled listing of "${prop?.title || 'Property'}" (ID: ${id}) to ${!current ? 'ACTIVE / AVAILABLE' : 'BOOKED / UNAVAILABLE'}`, profile);
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, isAvailable: !current } : p));
+      await fetchData();
+    } catch (err) {
+      console.error("Admin: Error toggling availability:", err);
+      alert("Failed to update availability: " + (err as Error).message);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     console.log("Admin: Deleting property starting:", id);
+    const prop = properties.find(p => p.id === id);
+    setConsoleSuccess('');
+    setConsoleError('');
     setDeletingId(id);
     try {
-      // 1. Get property data first to get image URLs
       const propertyToDelete = properties.find(p => p.id === id);
       
       if (propertyToDelete?.images) {
@@ -366,32 +381,31 @@ export default function Admin() {
           ...(propertyToDelete.images.png || [])
         ];
 
-        // Delete all images in parallel (best effort)
+        // Best effort image deletion
         await Promise.allSettled(
           allUrls.map(async (url) => {
             try {
-              // Only attempt to delete if it's a firebase storage URL
               if (url.includes('firebasestorage.googleapis.com')) {
                 const imageRef = ref(storage, url);
                 await deleteObject(imageRef);
               }
             } catch (err) {
-              console.warn("Could not delete image from storage:", url, err);
+              console.warn("Admin: Could not delete old file from storage:", url, err);
             }
           })
         );
       }
 
-      // 2. Delete from Firestore
       console.log("Admin: Deleting property from Firestore:", id);
       await deleteDoc(doc(db, 'properties', id));
+      logActivity('DELETE_PROPERTY', `Permanently deleted listing of: "${prop?.title || 'Unknown'}" (ID: ${id}) and wiped remote images`, profile);
       
-      alert("Property and its data deleted successfully!");
+      setConsoleSuccess(`Property "${prop?.title || 'Property'}" and its details were deleted successfully metrics-wide.`);
       setProperties(prev => prev.filter(p => p.id !== id));
       await fetchData();
     } catch (err) {
-      console.error("Error deleting property:", err);
-      alert("Failed to delete property: " + (err as Error).message);
+      console.error("Admin: Error deleting property:", err);
+      setConsoleError("Failed to delete property: " + (err as Error).message);
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);
@@ -399,545 +413,746 @@ export default function Admin() {
   };
 
   const updateBookingStatus = async (id: string, status: string) => {
-    await updateDoc(doc(db, 'bookings', id), { status });
-    fetchData();
+    try {
+      await updateDoc(doc(db, 'bookings', id), { status });
+      logActivity('UPDATE_BOOKING', `Updated booking ID [${id}] status to: [${status.toUpperCase()}]`, profile);
+      await fetchData();
+    } catch (err) {
+      console.error("Admin: Error updating booking status:", err);
+      alert("Failed to update booking: " + (err as Error).message);
+    }
   };
 
-  if (authLoading) return <div className="p-20 text-center animate-pulse">Verifying credentials...</div>;
+  const isDeveloperUser = user?.email?.toLowerCase() === 'fakharalimirza@gmail.com';
 
-  if (profile?.role !== 'host') return (
-    <div className="p-20 text-center flex flex-col items-center gap-4">
-      <Shield size={64} className="text-zinc-300 mb-4" />
-      <h2 className="text-2xl font-bold">Access Restricted</h2>
-      <p className="text-zinc-500 max-w-md">Only registered hosts can access the Authentic Management Portal. Would you like to apply to become a host?</p>
-      <button className="mt-4 px-6 py-2 bg-brand text-white rounded-full hover:bg-brand-hover transition-colors">Contact Support</button>
-    </div>
-  );
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-20">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-semibold text-zinc-500 font-mono tracking-wider uppercase">
+            Verifying secure credentials...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Double check: if user is logged in with the super administrator email, grant access immediately
+  const effectiveRole = isDeveloperUser ? 'super_admin' : (profile?.role || 'guest');
+  const allowedRoles = ['host', 'super_admin', 'admin', 'agent', 'maintenance', 'landlord'];
+
+  if (!isDeveloperUser && (!profile || !allowedRoles.includes(effectiveRole))) {
+    return <AccessDenied />;
+  }
+
+  const tabsList = getTabsList();
+
+  // Group tabs by category
+  const categories = Array.from(new Set(tabsList.map(t => t.category)));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-        <div className="flex-1">
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Management Portal</h1>
-          <p className="text-zinc-500">Dubai Portfolio & Real-time Bookings</p>
-        </div>
-        
-        <div className="w-full md:w-auto flex flex-wrap items-center gap-4">
-           {user.email?.toLowerCase() === 'fakharalimirza@gmail.com' && (
-             <button 
-              onClick={() => { setShowAllAsAdmin(!showAllAsAdmin); fetchData(); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${showAllAsAdmin ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200'}`}
-             >
-               {showAllAsAdmin ? 'Showing All (Admin Mode)' : 'Showing Mine (Host Mode)'}
-             </button>
-           )}
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search reference, title..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:ring-2 focus:ring-brand"
-            />
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row font-sans selection:bg-brand/10">
+      
+      {/* MOBILE HEADER BAR */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-md">
+            <Building2 className="text-white dark:text-zinc-900" size={16} />
           </div>
-          <button 
-            onClick={() => { 
-              setEditingId(null); 
-              setForm({ ...initialForm, referenceNo: `AHH-${Math.random().toString(36).substr(2, 9).toUpperCase()}` }); 
-              setUploadingStates({});
-              setIsModalOpen(true); 
-            }}
-            className="flex items-center justify-center gap-2 px-8 py-3 bg-brand text-white rounded-2xl font-bold hover:scale-105 transition-transform hover:bg-brand-hover shadow-lg shadow-brand/20"
+          <div>
+            <h1 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white uppercase">AHH Portal</h1>
+            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{effectiveRole.replace('_', ' ')}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 hover:scale-105 active:scale-95 transition-all"
+        >
+          {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
+      </div>
+
+      {/* MOBILE ACCORDION DRAWER OVERLAY */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-30 md:hidden bg-zinc-950/60 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
           >
-            <PlusCircle size={20} /> Add New
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="w-[280px] h-full bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col p-6 shadow-2xl relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header inside Menu */}
+              <div className="flex items-center gap-3 mb-8 border-b border-zinc-100 dark:border-zinc-850 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center text-white font-black text-lg">
+                  A
+                </div>
+                <div>
+                  <h2 className="font-black text-sm text-zinc-900 dark:text-white">Authentic Homes</h2>
+                  <p className="text-[9px] text-brand uppercase font-bold tracking-widest">Admin Workspace</p>
+                </div>
+              </div>
+
+              {/* Categorized Tab Links for Mobile */}
+              <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+                {categories.map((cat) => (
+                  <div key={cat} className="space-y-1.5">
+                    <p className="text-[10px] font-extrabold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest pl-2">
+                      {cat}
+                    </p>
+                    <div className="space-y-0.5">
+                      {tabsList
+                        .filter(t => t.category === cat)
+                        .map((tab) => {
+                          const Icon = tab.icon;
+                          const isActive = activeTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setActiveTab(tab.id)}
+                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all ${
+                                isActive
+                                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-md'
+                                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                              }`}
+                            >
+                              <Icon size={16} className={isActive ? 'text-brand' : 'text-zinc-400'} />
+                              <span>{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer user profile block in drawer */}
+              <div className="border-t border-zinc-150 dark:border-zinc-800 pt-4 mt-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center font-bold text-xs text-brand uppercase">
+                    {profile?.displayName?.charAt(0) || user?.email?.charAt(0) || 'A'}
+                  </div>
+                  <div className="truncate flex-1">
+                    <p className="text-xs font-black text-zinc-900 dark:text-white truncate">
+                      {profile?.displayName || 'Administrator'}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DESKTOP PERMANENT SIDEBAR CONTAINER */}
+      <motion.aside
+        animate={{ width: isSidebarCollapsed ? 88 : 280 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+        className="hidden md:flex flex-col bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 overflow-hidden shrink-0 z-30"
+      >
+        {/* Brand visual header area */}
+        <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-zinc-950 dark:bg-white flex items-center justify-center shrink-0 shadow-lg text-white dark:text-zinc-950 font-black text-lg">
+              A
+            </div>
+            {!isSidebarCollapsed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="whitespace-nowrap"
+              >
+                <h1 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white uppercase leading-none block">
+                  Authentic Homes
+                </h1>
+                <span className="text-[9px] font-extrabold uppercase tracking-widest text-brand mt-1 block">
+                  Operations Suite
+                </span>
+              </motion.div>
+            )}
+          </div>
+          
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="p-1.5 rounded-lg border border-zinc-150 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-white transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         </div>
-      </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800">
-          <p className="text-xs font-bold text-zinc-400 mb-2 uppercase tracking-widest">Total Revenue</p>
-          <p className="text-3xl font-black flex items-center gap-2"><CurrencySymbol size="0.8em" /> {stats.totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800">
-          <p className="text-xs font-bold text-zinc-400 mb-2 uppercase tracking-widest">Pending Approv.</p>
-          <p className="text-3xl font-black">{stats.pendingBookings}</p>
-        </div>
-        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800">
-          <p className="text-xs font-bold text-zinc-400 mb-2 uppercase tracking-widest">Active Units</p>
-          <p className="text-3xl font-black">{stats.activeProperties}</p>
-        </div>
-      </div>
+        {/* Categorized Tab Navigation for Desktop */}
+        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-7 no-scrollbar">
+          {categories.map((cat) => (
+            <div key={cat} className="space-y-2">
+              {!isSidebarCollapsed ? (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-2"
+                >
+                  {cat}
+                </motion.p>
+              ) : (
+                <div className="h-px bg-zinc-105 dark:bg-zinc-800 mx-2" />
+              )}
 
-      {/* Tabs */}
-      <div className="flex gap-8 mb-8 border-b border-zinc-200 dark:border-zinc-800">
-        <button 
-          onClick={() => setActiveTab('properties')}
-          className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'properties' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}
-        >
-          Properties
-          {activeTab === 'properties' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand" />}
-        </button>
-        <button 
-          onClick={() => setActiveTab('bookings')}
-          className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'bookings' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}
-        >
-          Bookings
-          {activeTab === 'bookings' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand" />}
-        </button>
-      </div>
-
-      {activeTab === 'properties' ? (
-        <div className="grid grid-cols-1 gap-4">
-          {loading ? [1,2,3].map(i => <div key={i} className="h-24 bg-zinc-100 dark:bg-zinc-900 rounded-2xl animate-pulse" />) : (
-            filteredProperties.map(p => (
-              <div key={p.id} className="flex flex-col md:flex-row items-center gap-6 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm transition-hover hover:border-zinc-300 dark:hover:border-zinc-700">
-                <img src={p.images?.webp?.[0] || 'https://via.placeholder.com/300x300?text=Listing'} className="w-full md:w-32 h-32 object-cover rounded-xl" alt="" />
-                <div className="flex-1 text-center md:text-left">
-                  <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-                    <h3 className="font-bold text-lg">{p.title}</h3>
-                    <span className={`w-2 h-2 rounded-full ${p.isAvailable ? 'bg-green-500' : 'bg-red-500'} shadow-[0_0_8px_rgba(34,197,94,0.4)]`} />
-                  </div>
-                  <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-500">{p.category}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest bg-brand/10 px-2 py-0.5 rounded text-brand">{p.referenceNo}</span>
-                  </div>
-                  <p className="text-sm text-zinc-500 mt-2">{p.location?.address}</p>
-                </div>
-                <div className="text-center md:text-right px-4">
-                   <p className="font-bold text-zinc-600 dark:text-zinc-400 flex items-center justify-center md:justify-end gap-1">
-                     <CurrencySymbol size="1.1em" /> {p.price}
-                   </p>
-                   <button 
-                    onClick={() => toggleAvailability(p.id, !!p.isAvailable)}
-                    className={`text-[10px] uppercase font-bold mt-1 px-3 py-1 rounded-full border transition-all ${p.isAvailable ? 'text-green-500 border-green-200 bg-green-50 dark:bg-green-900/10' : 'text-red-500 border-red-200 bg-red-50 dark:bg-red-900/10'}`}
-                   >
-                     {p.isAvailable ? 'Available' : 'Booked'}
-                   </button>
-                </div>
-                <div className="flex gap-2 p-4">
-                   <button 
-                    title="View Property"
-                    onClick={() => window.open(`/property/${p.id}`, '_blank')}
-                    className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors text-zinc-600 dark:text-zinc-400"
-                   >
-                    <ArrowRight size={18} />
-                   </button>
-                   <button title="Edit" onClick={() => handleEdit(p)} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors text-zinc-600 dark:text-zinc-400"><Edit size={18} /></button>
-                   <button title="Duplicate" onClick={() => handleDuplicate(p)} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors text-zinc-600 dark:text-zinc-400"><Plus size={18} /></button>
-                   <button 
-                      title="Delete" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setConfirmDeleteId(p.id);
-                      }} 
-                      disabled={deletingId === p.id}
-                      className="p-3 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500 rounded-xl transition-colors disabled:opacity-50"
-                    >
-                      {deletingId === p.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                    </button>
-                </div>
+              <div className="space-y-1">
+                {tabsList
+                  .filter(t => t.category === cat)
+                  .map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`w-full group flex items-center rounded-xl transition-all duration-200 relative ${
+                          isActive
+                            ? 'bg-zinc-905 dark:bg-zinc-100 text-zinc-950 dark:text-zinc-950 font-extrabold shadow-sm py-2.5 px-3.5'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 hover:text-zinc-800 dark:hover:text-white py-2 px-3'
+                        }`}
+                        title={isSidebarCollapsed ? tab.label : undefined}
+                      >
+                        <Icon 
+                          size={18} 
+                          className={`shrink-0 transition-all ${
+                            isActive ? 'text-brand' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'
+                          } ${isSidebarCollapsed ? 'mx-auto' : ''}`} 
+                        />
+                        {!isSidebarCollapsed && (
+                          <span className="text-xs ml-3 leading-none truncate">
+                            {tab.label}
+                          </span>
+                        )}
+                        {isActive && !isSidebarCollapsed && (
+                          <motion.div
+                            layoutId="activeGlow"
+                            className="absolute right-0 top-1/4 bottom-1/4 w-1 bg-brand rounded-l-md"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
               </div>
-            ))
-          )}
-          {filteredProperties.length === 0 && !loading && (
-            <div className="text-center py-20 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-               <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm">No units match your search</p>
             </div>
-          )}
+          ))}
         </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-y-2">
-            <thead>
-              <tr className="text-zinc-400 text-xs uppercase tracking-widest font-bold">
-                <th className="px-6 py-4">Property</th>
-                <th className="px-6 py-4">Dates</th>
-                <th className="px-6 py-4">Guest</th>
-                <th className="px-6 py-4 text-right">Total</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map(b => (
-                <tr key={b.id} className="bg-white dark:bg-zinc-900 group">
-                  <td className="px-6 py-4 rounded-l-2xl font-bold">{b.propertyId}</td>
-                  <td className="px-6 py-4 text-sm text-zinc-500">
-                    {new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium">{b.guestId.slice(0, 8)}...</td>
-                  <td className="px-6 py-4 text-right font-bold text-zinc-600 flex items-center justify-end gap-1">
-                    <CurrencySymbol size="1.1em" /> {b.totalPrice}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                      b.status === 'confirmed' ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 
-                      b.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' :
-                      'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                    }`}>
-                      {b.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 rounded-r-2xl">
-                    <div className="flex gap-2">
-                      <button onClick={() => updateBookingStatus(b.id, 'confirmed')} className="p-2 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/10 rounded-lg"><Check size={16}/></button>
-                      <button onClick={() => updateBookingStatus(b.id, 'cancelled')} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg"><X size={16}/></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {bookings.length === 0 && <div className="text-center py-20 text-zinc-400 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 uppercase tracking-widest text-xs font-bold">No active bookings</div>}
-        </div>
-      )}
 
-      {/* Property Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        {/* Desktop Admin Footer Profile Badge */}
+        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+          <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+            <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center font-black text-brand uppercase text-sm cursor-help shrink-0" title={`User ID: ${user.uid}`}>
+              {profile?.displayName?.charAt(0) || user?.email?.charAt(0) || 'A'}
+            </div>
+            {!isSidebarCollapsed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="truncate flex-1"
+              >
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-extrabold text-zinc-900 dark:text-zinc-100 truncate">
+                    {profile?.displayName || 'Administrator'}
+                  </p>
+                  <Shield size={10} className="text-brand shrink-0" />
+                </div>
+                <p className="text-[10px] text-zinc-450 truncate uppercase font-bold tracking-wider leading-none mt-1">
+                  {effectiveRole.replace('_', ' ')}
+                </p>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </motion.aside>
+
+      {/* MAIN BODY WRAPPER PANEL */}
+      <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* TOP STATUS CONTROL BAR */}
+        <header className="hidden md:flex items-center justify-between px-8 py-5 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 z-10">
+          <div>
+            <span className="text-[10px] font-black text-brand uppercase tracking-widest">AHH Management System</span>
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              Viewing Console <ArrowRight size={12} className="text-zinc-400" /> <span className="font-black text-zinc-950 dark:text-white capitalize">{tabsList.find(t => t.id === activeTab)?.label}</span>
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Super Admin mode switch */}
+            {user.email?.toLowerCase() === 'fakharalimirza@gmail.com' && (activeTab === 'properties' || activeTab === 'overview') && (
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowAllAsAdmin(!showAllAsAdmin);
+                  fetchData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all border ${
+                  showAllAsAdmin 
+                    ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
+                    : 'bg-white text-zinc-650 border-zinc-250 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+                }`}
+              >
+                {showAllAsAdmin ? 'Admin View: All' : 'Host View: Mine Only'}
+              </button>
+            )}
+
+            {/* Quick date-time dashboard stamp */}
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 px-3 py-1.5 rounded-xl border border-zinc-150 dark:border-zinc-800 text-[11px] font-bold text-zinc-500 flex items-center gap-1.5">
+              <Clock size={12} className="text-zinc-400" />
+              <span>{new Date().toLocaleDateString(lang === 'ar' ? 'ar-AE' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            </div>
+
+            {/* Quick Action additions button */}
+            {['properties', 'bookings'].includes(activeTab) && (
+              <button 
+                type="button"
+                onClick={handleAddNew}
+                className="flex items-center gap-1.5 px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold hover:scale-105 transition-transform active:scale-95 shadow-md shadow-brand/10 hover:bg-brand-hover"
+              >
+                <PlusCircle size={14} /> Add Property
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* WORKSPACE MIDDLE BODY PANEL */}
+        <main className="flex-1 overflow-y-auto outline-none">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25, cubicBezier: [0.16, 1, 0.3, 1] }}
+              className="p-4 md:p-8"
             >
-              <div className="p-8 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-950/40">
-                 <h2 className="text-2xl font-bold">{editingId ? 'Edit Property' : 'Add New Property'}</h2>
-                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors"><X/></button>
-              </div>
+              
+              {/* TAB 1: DASHBOARD OVERVIEW ENGINE (REDESIGNED) */}
+              {activeTab === 'overview' && (
+                <div className="space-y-8">
+                  {/* Executive Greeting Visual Hero */}
+                  <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 md:p-8 text-white shadow-xl dark:border dark:border-zinc-800">
+                    <div className="absolute right-0 top-0 w-96 h-96 bg-brand/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+                    <div className="absolute left-1/4 bottom-0 w-64 h-64 bg-zinc-800/20 rounded-full blur-[80px]" />
 
-              <form onSubmit={handleSubmit} className="p-8 overflow-y-auto space-y-8 no-scrollbar flex-1 pb-24">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                         <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Listing Title</label>
-                         <input 
-                          required
-                          type="text" 
-                          value={form.title}
-                          onChange={e => setForm({...form, title: e.target.value})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                          placeholder="e.g. Burj Khalifa Penthouse"
-                         />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Property Type</label>
-                        <select 
-                          value={form.category}
-                          onChange={e => setForm({...form, category: e.target.value})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
-                        >
-                          <option value="Apartment">Apartment</option>
-                          <option value="Villa">Villa</option>
-                          <option value="Penthouse">Penthouse</option>
-                          <option value="Studio">Studio</option>
-                          <option value="Loft">Loft</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                         <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Unit Number</label>
-                         <input 
-                          required
-                          type="text" 
-                          value={form.unitNumber}
-                          onChange={e => setForm({...form, unitNumber: e.target.value})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                          placeholder="e.g. 101"
-                         />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Building Name</label>
-                        <input 
-                          required
-                          type="text" 
-                          value={form.buildingName}
-                          onChange={e => setForm({...form, buildingName: e.target.value})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                          placeholder="e.g. Binghatti Avenue"
-                         />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Purpose</label>
-                        <select 
-                          value={form.purpose}
-                          onChange={e => setForm({...form, purpose: e.target.value as any})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
-                        >
-                          <option value="For Rent">For Rent</option>
-                          <option value="For Sale">For Sale</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Furnishing</label>
-                        <select 
-                          value={form.furnishing}
-                          onChange={e => setForm({...form, furnishing: e.target.value as any})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
-                        >
-                          <option value="Furnished">Furnished</option>
-                          <option value="Unfurnished">Unfurnished</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Description</label>
-                       <textarea 
-                        required
-                        value={form.description}
-                        onChange={e => setForm({...form, description: e.target.value})}
-                        rows={5}
-                        className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                        placeholder="Tell guests about your property..."
-                       />
-                    </div>
-
-                    <div className="space-y-4">
-                      <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Property Images</label>
-                      <div className="relative group">
-                        <input 
-                          type="file" 
-                          multiple 
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                        />
-                        <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 group-hover:border-brand rounded-[2rem] p-10 flex flex-col items-center justify-center gap-4 transition-colors">
-                          <div className="w-16 h-16 rounded-full bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-400 group-hover:text-brand transition-colors">
-                            <Upload size={32} />
-                          </div>
-                          <div className="text-center">
-                            <p className="font-bold">Click or Drag images here</p>
-                            <p className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Max 10 images • High Resolution Preferred</p>
-                          </div>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="px-2.5 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-extrabold uppercase tracking-widest text-brand">
+                            Live system
+                          </span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         </div>
+                        <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2 font-display">
+                          {timeOfDay === 'morning' ? 'Good Morning' : timeOfDay === 'afternoon' ? 'Good Afternoon' : 'Good Evening'},{' '}
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-brand">
+                            {profile?.displayName || user?.email?.split('@')[0]}
+                          </span>
+                        </h3>
+                        <p className="text-zinc-400 text-xs md:text-sm max-w-lg leading-relaxed">
+                          Welcome to your consolidated holiday home management portal. You are connected with administrative role{' '}
+                          <span className="text-white font-heavy underline decoration-brand underline-offset-4 font-bold">
+                            {effectiveRole.toUpperCase()}
+                          </span>
+                          . All service modules are reporting online status.
+                        </p>
                       </div>
-                      
-                      {/* Image Preview Grid */}
-                      {(form.imageFiles.length > 0 || form.imageUrls.webp?.length > 0) && (
-                        <div className="grid grid-cols-4 gap-3">
-                          {form.imageUrls.webp?.map((url, i) => (
-                            <div key={i} className="aspect-square relative rounded-xl overflow-hidden group border border-zinc-200 dark:border-zinc-700">
-                              <img src={url} alt="" className="w-full h-full object-cover" />
-                              <div className="absolute top-1 right-1 p-1 bg-green-500 text-white rounded-full shadow-lg z-20">
-                                <Check size={10} />
-                              </div>
-                              <button 
-                                type="button"
-                                onClick={() => {
-                                  setForm(prev => ({
-                                    ...prev,
-                                    imageUrls: {
-                                      avif: prev.imageUrls.avif.filter((_, idx) => idx !== i),
-                                      webp: prev.imageUrls.webp.filter((_, idx) => idx !== i),
-                                      png: prev.imageUrls.png.filter((_, idx) => idx !== i)
-                                    }
-                                  }));
-                                }}
-                                className="absolute bottom-1 right-1 p-1 bg-zinc-900/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X size={10} />
-                              </button>
-                            </div>
-                          ))}
-                          {form.imageFiles.map((file, i) => {
-                            // Find out if this file is still uploading
-                            const isStillUploading = Object.entries(uploadingStates).some(([key, val]) => key.startsWith(file.name) && val === 'uploading');
-                            const isError = Object.entries(uploadingStates).some(([key, val]) => key.startsWith(file.name) && val === 'error');
-                            const isDone = Object.entries(uploadingStates).some(([key, val]) => key.startsWith(file.name) && val === 'completed');
 
-                            // If it's already done, we show it in the primary webp list above
-                            if (isDone) return null;
-
-                            return (
-                              <div key={i} className="aspect-square relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700 p-2">
-                                <p className="text-[8px] font-bold text-zinc-500 truncate w-full text-center">{file.name}</p>
-                                {isStillUploading && <Loader2 size={16} className="animate-spin text-brand mt-1" />}
-                                {isError && <X size={16} className="text-red-500 mt-1" />}
-                                <button 
-                                  type="button"
-                                  onClick={() => setForm(prev => ({ ...prev, imageFiles: prev.imageFiles.filter((_, idx) => idx !== i) }))}
-                                  className="absolute top-1 right-1 p-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-500 rounded-full"
-                                >
-                                  <X size={8} />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                      {/* Quick access widget link to list house */}
+                      <div className="shrink-0">
+                        <button
+                          onClick={handleAddNew}
+                          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand text-white font-bold hover:scale-105 hover:bg-brand-hover active:scale-95 transition-all text-sm shadow-xl shadow-brand/30 ring-1 ring-white/10"
+                        >
+                          <PlusCircle size={18} /> Listed Property Units +
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400 font-sans">Price (Dirham)</label>
-                        <input 
-                          required
-                          type="number" 
-                          value={form.price}
-                          onChange={e => setForm({...form, price: Number(e.target.value)})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                        />
+                  {/* Standard Numerical Metric Stat Counters */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-[11px] font-black uppercase text-zinc-400 tracking-widest">Executive Ledger Indicators</p>
+                      <span className="text-xs text-brand font-bold flex items-center gap-1">Real-time <Activity size={10} className="animate-spin" /></span>
+                    </div>
+                    <AdminStats stats={stats} />
+                  </div>
+
+                  {/* Dashboard Core Row Controls Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    {/* LEFT 2 COLS: Quick Console Navigation Grid */}
+                    <div className="lg:col-span-2 space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-black uppercase text-zinc-900 dark:text-zinc-400 tracking-wider">Operational Quick Actions</h4>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Size (sqft)</label>
-                        <input 
-                          type="number" 
-                          value={form.size}
-                          onChange={e => setForm({...form, size: Number(e.target.value)})}
-                          className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                        />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Box 1: Properties */}
+                        <div 
+                          onClick={() => setActiveTab('properties')}
+                          className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-brand/30 cursor-pointer transition-all flex flex-col justify-between group h-36"
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-200 group-hover:scale-110 transition-transform">
+                              <Building2 size={20} />
+                            </span>
+                            <ArrowUpRight size={16} className="text-zinc-400 group-hover:text-brand transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">Properties & Portfolio</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Manage active holiday home listings in Dubai</p>
+                          </div>
+                        </div>
+
+                        {/* Box 2: Reservations */}
+                        <div 
+                          onClick={() => setActiveTab('bookings')}
+                          className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-brand/30 cursor-pointer transition-all flex flex-col justify-between group h-36"
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-200 group-hover:scale-110 transition-transform">
+                              <CalendarRange size={20} />
+                            </span>
+                            <ArrowUpRight size={16} className="text-zinc-400 group-hover:text-brand transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">Reservations Controller</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Review check-in, check-out and client details</p>
+                          </div>
+                        </div>
+
+                        {/* Box 3: Support */}
+                        <div 
+                          onClick={() => setActiveTab('support')}
+                          className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-brand/30 cursor-pointer transition-all flex flex-col justify-between group h-36"
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-200 group-hover:scale-110 transition-transform">
+                              <LifeBuoy size={20} />
+                            </span>
+                            <ArrowUpRight size={16} className="text-zinc-400 group-hover:text-brand transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">Guest Support Desk</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Help check guest request tickets & assistance logs</p>
+                          </div>
+                        </div>
+
+                        {/* Box 4: Database Status */}
+                        <div 
+                          onClick={() => setActiveTab('database')}
+                          className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-150 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-brand/30 cursor-pointer transition-all flex flex-col justify-between group h-36"
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-200 group-hover:scale-110 transition-transform">
+                              <Database size={20} />
+                            </span>
+                            <ArrowUpRight size={16} className="text-zinc-400 group-hover:text-brand transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">cPanel Remote Database</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Monitor phpMyAdmin mysql database port syncs</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Brief Info Banner */}
+                      <div className="p-5 bg-brand/5 border border-brand/10 rounded-2xl flex items-start gap-4">
+                        <Sparkles className="text-brand shrink-0" size={18} />
+                        <div>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-250 select-none">Secure Vault Architecture Option</p>
+                          <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+                            Files and receipts uploaded via management consoles utilize VPS FTP directories internally when active, hosting files under authenticated VPS storage. Firestore is queried for reactive state.
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Beds</label>
-                        <input type="number" value={form.bedrooms} onChange={e => setForm({...form, bedrooms: Number(e.target.value)})} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl" />
+                    {/* RIGHT 1 COL: Server Status Indicators */}
+                    <div className="space-y-6">
+                      <h4 className="text-sm font-black uppercase text-zinc-900 dark:text-zinc-400 tracking-wider">Conserved System Status</h4>
+
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 p-6 rounded-3xl space-y-5 shadow-sm">
+                        
+                        {/* Service account */}
+                        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-850 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-red-500/10 dark:bg-red-500/5 text-red-500 flex items-center justify-center">
+                              <Shield size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">Firebase Auth & DB</p>
+                              <p className="text-[9px] text-zinc-450 truncate max-w-44 font-mono">gen-lang-client-0638117875</p>
+                            </div>
+                          </div>
+                          <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Active
+                          </span>
+                        </div>
+
+                        {/* VPS sync */}
+                        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-850 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 dark:bg-amber-500/5 text-amber-500 flex items-center justify-center">
+                              <Database size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">MySQL Database</p>
+                              <p className="text-[9px] text-zinc-450 truncate max-w-44 font-mono">jadetude_authenti_portal_new</p>
+                            </div>
+                          </div>
+                          <span className="flex items-center gap-1 text-[10px] text-indigo-500 font-bold bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                            Synced
+                          </span>
+                        </div>
+
+                        {/* Storage Bucket */}
+                        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-850 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-teal-500/10 dark:bg-teal-500/5 text-teal-500 flex items-center justify-center">
+                              <FolderKey size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">FTP S3 Buckets</p>
+                              <p className="text-[9px] text-zinc-450 truncate max-w-44 font-mono">ftp.jad-etude.pro</p>
+                            </div>
+                          </div>
+                          <span className="flex items-center gap-1 text-[10px] text-sky-500 font-bold bg-sky-500/10 px-2 py-0.5 rounded-full">
+                            Secure
+                          </span>
+                        </div>
+
+                        {/* Mail Server */}
+                        <div className="flex items-center justify-between pb-1">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/5 text-emerald-500 flex items-center justify-center">
+                              <MessageSquare size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">Mailer Services</p>
+                              <p className="text-[9px] text-zinc-450 truncate max-w-44 font-mono">mail.authenticholidayhomes.ae</p>
+                            </div>
+                          </div>
+                          <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            SSL SSL/TLS
+                          </span>
+                        </div>
+
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Baths</label>
-                        <input type="number" value={form.bathrooms} onChange={e => setForm({...form, bathrooms: Number(e.target.value)})} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl" />
+
+                      {/* Brief Developer Quick Indicator */}
+                      <div className="bg-zinc-900 text-white rounded-3xl p-6 relative overflow-hidden shadow-md">
+                        <div className="absolute right-0 top-0 w-24 h-24 bg-brand/20 rounded-full blur-2xl" />
+                        <p className="text-[9px] text-brand uppercase tracking-widest font-extrabold mb-1">Developer Notice</p>
+                        <h5 className="font-bold text-xs text-zinc-105 mb-2 leading-snug">Credentials stored in Root `.env`</h5>
+                        <p className="text-[10px] text-zinc-400 leading-relaxed font-mono">
+                          Connected properties and integrations are loaded dynamically. No secrets are stored permanently on server instances, supporting safe local ZIP deployments at port 3000.
+                        </p>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Guests</label>
-                        <input type="number" value={form.maxGuests} onChange={e => setForm({...form, maxGuests: Number(e.target.value)})} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl" />
-                      </div>
+
                     </div>
 
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Detailed Address (Dubai)</label>
-                       <input 
-                        required
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PROPERTIES & UNITS */}
+              {activeTab === 'properties' && (
+                <div className="space-y-6">
+                  {/* Console Alerts */}
+                  {consoleError && (
+                    <div className="p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 text-xs rounded-2xl flex items-center gap-3 border border-red-100 dark:border-red-900/30 font-sans shadow-xs">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                      <div className="flex-1 font-medium">{consoleError}</div>
+                      <button onClick={() => setConsoleError('')} className="text-red-400 hover:text-red-650 font-bold px-2">✕</button>
+                    </div>
+                  )}
+
+                  {consoleSuccess && (
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-xs rounded-2xl flex items-center gap-3 border border-emerald-100 dark:border-emerald-900/30 font-sans shadow-xs">
+                      <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                      <div className="flex-1 font-medium">{consoleSuccess}</div>
+                      <button onClick={() => setConsoleSuccess('')} className="text-emerald-400 hover:text-emerald-650 font-bold px-2">✕</button>
+                    </div>
+                  )}
+
+                  {/* Local contextual Search controls & toggles to match properties view filter constraints */}
+                  <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-150 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                    <div className="relative w-full md:w-[480px]">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                      <input 
                         type="text" 
-                        value={form.address}
-                        onChange={e => setForm({...form, address: e.target.value})}
-                        className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all" 
-                        placeholder="e.g. Palm Jumeirah, Villa 45"
-                       />
+                        placeholder="Filter list by title reference, building name key..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-750 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all"
+                      />
                     </div>
-
-                    {/* Amenities Category Grid */}
-                    <div className="space-y-6 pt-4">
-                      <h3 className="text-sm font-black uppercase tracking-widest text-zinc-900 dark:text-white">Amenities & Features</h3>
-                      <div className="space-y-8 max-h-[400px] overflow-y-auto px-1 no-scrollbar">
-                        {Object.entries(AMENITY_CATEGORIES).map(([catId, items]) => (
-                          <div key={catId} className="space-y-3">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-1">{catId.replace(/([A-Z])/g, ' $1')}</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                              {items.map(item => (
-                                <button 
-                                  key={item}
-                                  type="button"
-                                  onClick={() => {
-                                    const current = (form.amenities as any)[catId] || [];
-                                    const updated = current.includes(item) 
-                                      ? current.filter((i: string) => i !== item)
-                                      : [...current, item];
-                                    setForm({
-                                      ...form,
-                                      amenities: { ...form.amenities, [catId]: updated }
-                                    });
-                                  }}
-                                  className={`flex items-center gap-2 p-3 rounded-xl border text-[10px] font-bold uppercase tracking-tight transition-all ${
-                                    ((form.amenities as any)[catId] || []).includes(item)
-                                      ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-lg shadow-zinc-900/10'
-                                      : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:border-zinc-300'
-                                  }`}
-                                >
-                                  {((form.amenities as any)[catId] || []).includes(item) ? <Check size={12} strokeWidth={4} /> : <Plus size={12} />}
-                                  {item}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                    {user.email?.toLowerCase() === 'fakharalimirza@gmail.com' && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Administrative Filtering:</span>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setShowAllAsAdmin(!showAllAsAdmin);
+                            fetchData();
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                            showAllAsAdmin 
+                              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' 
+                              : 'bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-400'
+                          }`}
+                        >
+                          {showAllAsAdmin ? 'Showing All Properties' : 'Showing Only My Listings'}
+                        </button>
                       </div>
-                    </div>
+                    )}
                   </div>
-                </div>
 
-                <div className="absolute bottom-0 left-0 right-0 p-8 pt-4 bg-gradient-to-t from-white dark:from-zinc-900 via-white/90 dark:via-zinc-900/90 to-transparent">
-                  <button 
-                  disabled={isUploading || Object.values(uploadingStates).some(s => s === 'uploading')}
-                  type="submit"
-                  className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all hover:bg-brand-hover flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    {isUploading ? <><Loader2 className="animate-spin" /> {editingId ? 'Updating...' : 'Publishing...'}</> : 
-                     Object.values(uploadingStates).some(s => s === 'uploading') ? <><Loader2 className="animate-spin" /> Uploading Images...</> :
-                     (editingId ? 'Update Listing' : 'Publish Property')}
-                  </button>
+                  <PropertyFormModal 
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                      setIsModalOpen(false);
+                      setEditingId(null);
+                      setInitialFormToEdit(null);
+                    }}
+                    editingId={editingId}
+                    initialFormToEdit={initialFormToEdit}
+                    onSaved={() => {
+                      setIsModalOpen(false);
+                      setEditingId(null);
+                      setInitialFormToEdit(null);
+                      fetchData();
+                    }}
+                    user={user}
+                  />
+
+                  <PropertiesTable 
+                    loading={loading}
+                    properties={filteredProperties}
+                    toggleAvailability={toggleAvailability}
+                    handleEdit={handleEdit}
+                    handleDuplicate={handleDuplicate}
+                    setConfirmDeleteId={setConfirmDeleteId}
+                    deletingId={deletingId}
+                  />
                 </div>
-              </form>
+              )}
+
+              {/* TAB 3: RESERVATIONS CONSOLE */}
+              {activeTab === 'bookings' && (
+                <BookingConsole 
+                  properties={properties} 
+                  onRefreshStats={fetchData}
+                />
+              )}
+
+              {/* TAB 4: TURNOVERS & CLEANING */}
+              {activeTab === 'maintenance' && (
+                <TurnoversTable currentRole={profile?.role} />
+              )}
+
+              {/* TAB 5: SUPPORT TICKETS SUPPORT */}
+              {activeTab === 'support' && (
+                <TicketsConsole 
+                  userUid={user.uid} 
+                  userRole={profile?.role} 
+                  userName={profile?.displayName} 
+                  propertiesList={properties} 
+                />
+              )}
+
+              {/* TAB 6: SECURE DOCUMENT VAULT */}
+              {activeTab === 'documents' && (
+                <DocumentsConsole />
+              )}
+
+              {/* TAB 7: PAYMENTS LEDGER */}
+              {activeTab === 'payments' && (
+                <PaymentsConsole 
+                  userUid={user.uid} 
+                  userRole={profile?.role} 
+                  userName={profile?.displayName} 
+                  userNameEmail={user?.email || undefined}
+                  propertiesList={properties} 
+                />
+              )}
+
+              {/* TAB 8: STAFF INTERNAL CHAT */}
+              {activeTab === 'staff_chat' && (
+                <StaffChat />
+              )}
+
+              {/* TAB 9: MEMBER ROLES */}
+              {activeTab === 'users' && (
+                <UsersTable currentRole={profile?.role} />
+              )}
+
+              {/* TAB 10: INVITATIONS roster */}
+              {activeTab === 'invitations' && (
+                <InvitationsConsole />
+              )}
+
+              {/* TAB 11: AUDIT TRAILS */}
+              {activeTab === 'audit_logs' && (
+                <AuditLogsConsole />
+              )}
+
+              {/* TAB 12: CPANEL REMOTE DATABASE */}
+              {activeTab === 'database' && (
+                <DatabaseConsole />
+              )}
+
+              {/* TAB 13: GLOBAL SETTINGS PANEL */}
+              {activeTab === 'settings' && (
+                <SettingsPanel />
+              )}
+
+              {/* TAB 14: LANDLORDS CONSOLE */}
+              {activeTab === 'landlords' && (
+                <LandlordsConsole />
+              )}
+
+              {/* TAB 15: BUILDINGS CONSOLE */}
+              {activeTab === 'buildings' && (
+                <BuildingsConsole />
+              )}
+
+              {/* TAB 16: UNITS CONSOLE */}
+              {activeTab === 'units' && (
+                <UnitsConsole onCreateListing={handleCreateListingFromUnit} />
+              )}
+
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {confirmDeleteId && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmDeleteId(null)}
-              className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2rem] p-8 shadow-2xl text-center"
-            >
-              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Trash2 size={40} />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Confirm Delete</h3>
-              <p className="text-zinc-500 mb-8 leading-relaxed">
-                Are you sure you want to delete this property?<br />
-                <span className="font-bold text-red-500 underline decoration-red-500/30"> This action cannot be undone.</span>
-              </p>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setConfirmDeleteId(null)}
-                  className="flex-1 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl font-bold hover:bg-zinc-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => handleDelete(confirmDeleteId)}
-                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all active:scale-95"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* MODAL 2: Delete Confirmation Modal */}
+      <DeleteConfirmationModal 
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => {
+          if (confirmDeleteId) handleDelete(confirmDeleteId);
+        }}
+        title={properties.find(p => p.id === confirmDeleteId)?.title || "this property"}
+        isDeleting={deletingId === confirmDeleteId}
+      />
+
     </div>
   );
 }
-
