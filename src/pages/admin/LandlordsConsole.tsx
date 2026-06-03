@@ -3,7 +3,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { 
   Plus, Search, Edit2, Trash2, Landmark, Mail, Phone, 
   MapPin, Globe, CreditCard, Shield, FileText, Upload, 
-  Check, Loader2, AlertCircle, Eye, EyeOff, User, Download, ExternalLink, HelpCircle
+  Check, Loader2, AlertCircle, Eye, EyeOff, User, Download, ExternalLink, HelpCircle,
+  LayoutGrid, List
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 
@@ -29,6 +30,7 @@ export default function LandlordsConsole() {
   const [landlords, setLandlords] = useState<Landlord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Modal & form state
   const [showFormModal, setShowFormModal] = useState(false);
@@ -628,6 +630,33 @@ export default function LandlordsConsole() {
         >
           <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
+
+        <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 bg-zinc-50 dark:bg-zinc-950">
+          <button
+            type="button"
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${
+              viewMode === 'grid'
+                ? 'bg-white dark:bg-zinc-900 shadow-xs text-zinc-900 dark:text-white'
+                : 'text-zinc-400 hover:text-zinc-650'
+            }`}
+            title="Grid View"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${
+              viewMode === 'list'
+                ? 'bg-white dark:bg-zinc-900 shadow-xs text-zinc-900 dark:text-white'
+                : 'text-zinc-400 hover:text-zinc-650'
+            }`}
+            title="List View"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Main Grid View */}
@@ -645,98 +674,183 @@ export default function LandlordsConsole() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredLandlords.map((land) => (
-            <div 
-              key={land.id}
-              className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-5 hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div>
-                {/* Visual Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-650 dark:text-zinc-350 border border-zinc-100 dark:border-zinc-850">
-                      <User className="w-5 h-5" />
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredLandlords.map((land) => (
+              <div 
+                key={land.id}
+                className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-5 hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  {/* Visual Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-650 dark:text-zinc-350 border border-zinc-100 dark:border-zinc-850">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-zinc-850 dark:text-zinc-100 text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
+                          {land.fullName}
+                        </h3>
+                        <span className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
+                          {land.nationality || 'Nationality Unspecified'}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-zinc-850 dark:text-zinc-100 text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
-                        {land.fullName}
-                      </h3>
-                      <span className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
-                        {land.nationality || 'Nationality Unspecified'}
-                      </span>
+                    
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setShowDetailModal(land)}
+                        className="p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 rounded-lg transition-all"
+                        title="View Payout Info"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenEdit(land)}
+                        className="p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 rounded-lg transition-all"
+                        title="Edit Profile"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(land)}
+                        className="p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 text-red-500 hover:text-red-700 rounded-lg transition-all"
+                        title="Delete profile"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setShowDetailModal(land)}
-                      className="p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 rounded-lg transition-all"
-                      title="View Payout Info"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenEdit(land)}
-                      className="p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 rounded-lg transition-all"
-                      title="Edit Profile"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(land)}
-                      className="p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950 text-red-500 hover:text-red-700 rounded-lg transition-all"
-                      title="Delete profile"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                  <hr className="my-4 border-zinc-100 dark:border-zinc-800" />
+
+                  {/* Info block */}
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-2 text-zinc-550 dark:text-zinc-400">
+                      <Mail className="w-3.5 h-3.5" />
+                      <span className="truncate">{land.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-zinc-550 dark:text-zinc-400">
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>{land.phone || 'Phone not available'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-zinc-550 dark:text-zinc-400">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>ID: {land.identityNumber || 'No identity document ID listed'}</span>
+                    </div>
                   </div>
                 </div>
 
-                <hr className="my-4 border-zinc-100 dark:border-zinc-800" />
-
-                {/* Info block */}
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center gap-2 text-zinc-550 dark:text-zinc-400">
-                    <Mail className="w-3.5 h-3.5" />
-                    <span className="truncate">{land.email}</span>
+                {/* Bank summary footer line */}
+                <div className="bg-zinc-50 dark:bg-zinc-950/40 rounded-xl px-3 py-2.5 mt-4 border border-zinc-100/50 dark:border-zinc-850 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-emerald-555" />
+                    <span className="font-semibold text-zinc-750 dark:text-zinc-300 text-[11px] truncate max-w-[140px]">
+                      {land.bankName || 'No linked bank accounts'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 text-zinc-550 dark:text-zinc-400">
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>{land.phone || 'Phone not available'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-zinc-550 dark:text-zinc-400">
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>ID: {land.identityNumber || 'No identity document ID listed'}</span>
-                  </div>
+                  {land.identityDocumentUrl ? (
+                    <a 
+                      href={land.identityDocumentUrl} 
+                      target="_blank" 
+                      rel="noreferrer referrer"
+                      className="text-[10px] text-zinc-800 dark:text-zinc-300 underline font-medium flex items-center gap-1 hover:text-brand"
+                    >
+                      View E-ID <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 italic">No Identity Doc</span>
+                  )}
                 </div>
               </div>
-
-              {/* Bank summary footer line */}
-              <div className="bg-zinc-50 dark:bg-zinc-950/40 rounded-xl px-3 py-2.5 mt-4 border border-zinc-100/50 dark:border-zinc-850 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-emerald-555" />
-                  <span className="font-semibold text-zinc-750 dark:text-zinc-300 text-[11px] truncate max-w-[140px]">
-                    {land.bankName || 'No linked bank accounts'}
-                  </span>
-                </div>
-                {land.identityDocumentUrl ? (
-                  <a 
-                    href={land.identityDocumentUrl} 
-                    target="_blank" 
-                    rel="noreferrer referrer"
-                    className="text-[10px] text-zinc-800 dark:text-zinc-300 underline font-medium flex items-center gap-1 hover:text-brand"
-                  >
-                    View E-ID <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                ) : (
-                  <span className="text-[10px] text-zinc-400 italic">No Identity Doc</span>
-                )}
-              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-105 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="p-4">Owner Name</th>
+                    <th className="p-4">Contact Channels</th>
+                    <th className="p-4">Nationality</th>
+                    <th className="p-4">Identity Number</th>
+                    <th className="p-4">Payout Method</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                  {filteredLandlords.map((land) => (
+                    <tr key={land.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 text-zinc-700 dark:text-zinc-300">
+                      <td className="p-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-550 border border-zinc-100 dark:border-zinc-850">
+                            <User className="w-4 h-4 text-zinc-500" />
+                          </div>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">{land.fullName}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 space-y-0.5">
+                        <p className="flex items-center gap-1.5 text-zinc-850 dark:text-zinc-200">
+                          <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span className="truncate max-w-[180px]">{land.email}</span>
+                        </p>
+                        <p className="flex items-center gap-1.5 text-zinc-450 text-[11px]">
+                          <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span>{land.phone || 'Unavailable'}</span>
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
+                          {land.nationality || 'Unspecified'}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono text-[11px] text-zinc-500">
+                        {land.identityNumber || 'Unspecified'}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+                          <div className="text-[11px]">
+                            <p className="font-bold text-zinc-800 dark:text-zinc-200">{land.bankName || 'No linked bank accounts'}</p>
+                            {land.bankAccountNumber && <p className="text-[9px] text-zinc-400 font-mono">No. {land.bankAccountNumber}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setShowDetailModal(land)}
+                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-850 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 rounded-lg transition-all"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(land)}
+                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-850 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 rounded-lg transition-all"
+                            title="Edit Profile"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(land)}
+                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-850 text-red-500 hover:text-red-700 rounded-lg transition-all"
+                            title="Delete profile"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </div>
+        )
       )}
 
       {/* DETAIL MODAL */}

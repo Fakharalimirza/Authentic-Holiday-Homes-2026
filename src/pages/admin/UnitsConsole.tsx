@@ -27,7 +27,9 @@ import {
   Calendar,
   Percent,
   Tv,
-  Globe2
+  Globe2,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { UnitItem, BuildingItem, LandlordItem } from './types';
 import { useGlobalSettings } from '../../contexts/GlobalSettingsContext';
@@ -50,6 +52,7 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -82,6 +85,8 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
+  const [isDragOverCsv, setIsDragOverCsv] = useState(false);
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form Fields
   const [unitForm, setUnitForm] = useState({
@@ -577,17 +582,14 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
   };
 
   // CSV BULK IMPORT CODES
-  const handleImportCsv = (e: React.FormEvent) => {
-    e.preventDefault();
+  const parseAndPreviewCsv = (text: string) => {
     setImportError('');
-    setImportSuccess('');
-
-    if (!importCsvText.trim()) {
-      setImportError("Please paste raw CSV values or select a CSV source template.");
+    if (!text.trim()) {
+      setImportError("CSV content is empty.");
       return;
     }
 
-    const lines = importCsvText.split('\n');
+    const lines = text.split('\n');
     if (lines.length < 2) {
       setImportError("CSV must contain a header row followed by at least 1 record row.");
       return;
@@ -667,6 +669,45 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
     } else {
       setImportPreview(results);
     }
+  };
+
+  const handleImportCsv = (e: React.FormEvent) => {
+    e.preventDefault();
+    setImportError('');
+    setImportSuccess('');
+
+    if (!importCsvText.trim()) {
+      setImportError("Please paste raw CSV values or select a CSV source template.");
+      return;
+    }
+
+    parseAndPreviewCsv(importCsvText);
+  };
+
+  const handleCsvFileLoad = (file: File) => {
+    if (!file) return;
+    const isCsv = file.name.endsWith('.csv') || file.type === 'text/csv' || file.name.endsWith('.txt');
+    if (!isCsv) {
+      setImportError("Invalid file type. Please upload a valid CSV file (.csv) or tab-delimited text (.txt).");
+      return;
+    }
+
+    setImportError('');
+    setImportSuccess('');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) {
+        setImportCsvText(text);
+        setImportSuccess(`Successfully loaded offline file "${file.name}"! Correct indexes matched.`);
+        parseAndPreviewCsv(text);
+      }
+    };
+    reader.onerror = () => {
+      setImportError("Failed to read the selected CSV file.");
+    };
+    reader.readAsText(file);
   };
 
   const handleConfirmImport = async () => {
@@ -840,6 +881,33 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
           >
             <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+
+          <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 bg-zinc-50 dark:bg-zinc-950 ml-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-zinc-900 shadow-xs text-zinc-900 dark:text-white'
+                  : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-zinc-900 shadow-xs text-zinc-900 dark:text-white'
+                  : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -858,7 +926,8 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredUnits.map((unit) => {
             const buildingName = getBuildingName(unit.buildingId);
             const buildingAddress = getBuildingAddress(unit.buildingId);
@@ -1006,7 +1075,100 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
             );
           })}
         </div>
-      )}
+      ) : (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-105 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+          <div className="overflow-x-auto font-sans">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="p-4">Unit / Suite</th>
+                  <th className="p-4">Building</th>
+                  <th className="p-4">Landlord</th>
+                  <th className="p-4 font-sans">Config / Specs</th>
+                  <th className="p-4 font-sans justify-center">Price / mo</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 flex-1">
+                {filteredUnits.map((unit) => {
+                  const buildingName = getBuildingName(unit.buildingId);
+                  const landlordName = getLandlordName(unit.landlordId);
+                  const landlordEmail = getLandlordEmail(unit.landlordId);
+
+                  const statusStyle = {
+                    Vacant: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400',
+                    Occupied: 'bg-blue-50 text-blue-700 border-blue-101 dark:bg-blue-950/20 dark:text-blue-400',
+                    Maintenance: 'bg-amber-50 text-amber-700 border-amber-101 dark:bg-amber-950/20 dark:text-amber-400',
+                    Blocked: 'bg-zinc-100 text-zinc-650 border-zinc-201 dark:bg-zinc-800/40 dark:text-zinc-400'
+                  }[unit.status] || 'bg-zinc-50 text-zinc-600';
+
+                  return (
+                    <tr key={unit.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 text-zinc-700 dark:text-zinc-300">
+                      <td className="p-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center border border-zinc-100 dark:border-zinc-850">
+                            <Key className="w-4 h-4 text-zinc-550" />
+                          </div>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">Unit {unit.unitNumber}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 truncate max-w-[150px]">
+                        <div className="flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span className="font-medium text-zinc-800 dark:text-zinc-200">{buildingName || 'Unassigned Building'}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 space-y-0.5">
+                        <div className="flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span className="font-bold text-zinc-850 dark:text-zinc-200 truncate max-w-[150px]">{landlordName || 'Individual landlord'}</span>
+                        </div>
+                        {landlordEmail && (
+                          <p className="text-[10px] text-zinc-404 pl-4">{landlordEmail}</p>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3 text-[11px] text-zinc-655 dark:text-zinc-400 font-sans">
+                          <span className="flex items-center gap-0.5"><BedDouble className="w-3.5 h-3.5 text-zinc-400" /> {unit.bedrooms} BR</span>
+                          <span className="flex items-center gap-0.5"><Bath className="w-3.5 h-3.5 text-zinc-400" /> {unit.bathrooms} BA</span>
+                          <span>{unit.size?.toLocaleString()} sqft</span>
+                        </div>
+                      </td>
+                      <td className="p-4 font-bold text-zinc-900 dark:text-zinc-100 font-sans">
+                        {unit.price > 0 ? formatPrice(unit.price) : 'Not Configured'}
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${statusStyle}`}>
+                          {unit.status}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEdit(unit)}
+                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-850 text-zinc-500 hover:text-zinc-750 dark:hover:text-zinc-350 rounded-lg transition-all cursor-pointer"
+                            title="Edit Unit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTrigger(unit)}
+                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-850 text-red-500 hover:text-red-750 rounded-lg transition-all cursor-pointer"
+                            title="Delete Unit"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
 
       {/* CREATE & EDIT FORM MODAL */}
       {isFormOpen && (
@@ -1563,32 +1725,89 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-zinc-450 dark:text-zinc-400">
-                  <span>Paste CSV Data Here:</span>
-                  <button
-                    type="button"
-                    onClick={loadSampleCsv}
-                    className="text-blue-500 hover:text-blue-600 cursor-pointer flex items-center gap-1 normal-case"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" /> Loading Mock CSV Template
-                  </button>
+              <div className="space-y-4">
+                <input
+                  type="file"
+                  ref={csvFileInputRef}
+                  className="hidden"
+                  accept=".csv,text/csv,.txt"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCsvFileLoad(file);
+                  }}
+                />
+
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOverCsv(true);
+                  }}
+                  onDragLeave={() => setIsDragOverCsv(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOverCsv(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleCsvFileLoad(file);
+                  }}
+                  onClick={() => csvFileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2.5 ${
+                    isDragOverCsv
+                      ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
+                      : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 bg-zinc-50/50 dark:bg-zinc-900/40'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center text-blue-500">
+                    <FileSpreadsheet className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-black text-zinc-800 dark:text-zinc-200">
+                      Drag & drop your CSV file here, or <span className="text-blue-600 hover:underline">browse files</span>
+                    </p>
+                    <p className="text-[10px] text-zinc-450 dark:text-zinc-500">
+                      We support fully offline standard UTF-8 .csv files
+                    </p>
+                  </div>
                 </div>
 
-                <textarea
-                  value={importCsvText}
-                  onChange={(e) => setImportCsvText(e.target.value)}
-                  placeholder="Unit Number,Building Name,Landlord Email/Name,Category,Price,Bedrooms,Bathrooms,Area SqFt,Commission %,Guests Capacity"
-                  rows={6}
-                  className="w-full px-3.5 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-mono outline-none focus:ring-1 focus:ring-zinc-400 transition-all resize-y"
-                />
-                
-                <p className="text-[10px] text-zinc-400 leading-normal flex items-start gap-1">
-                  <Info className="w-3.5 h-3.5 text-zinc-550 shrink-0 mt-0.5" />
-                  <span>
-                    Guidelines: The first line must designate column header variables. Valid properties include <strong>Unit Number</strong>, <strong>Building</strong>, <strong>Landlord</strong>, <strong>Category</strong>, <strong>Price</strong>, <strong>Bedrooms</strong>, <strong>Size</strong>, <strong>Commission</strong>, and <strong>Guests</strong>.
+                <div className="relative flex items-center justify-center py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-zinc-150 dark:border-zinc-800"></div>
+                  </div>
+                  <span className="relative px-3 bg-white dark:bg-zinc-900 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                    Or pasted manual input
                   </span>
-                </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-zinc-450 dark:text-zinc-400">
+                    <span>Paste Raw CSV Values manually:</span>
+                    <button
+                      type="button"
+                      onClick={loadSampleCsv}
+                      className="text-blue-500 hover:text-blue-600 cursor-pointer flex items-center gap-1 normal-case"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Loading Mock CSV Template
+                    </button>
+                  </div>
+
+                  <textarea
+                    value={importCsvText}
+                    onChange={(e) => {
+                      setImportCsvText(e.target.value);
+                      parseAndPreviewCsv(e.target.value);
+                    }}
+                    placeholder="Unit Number,Building Name,Landlord Email/Name,Category,Price,Bedrooms,Bathrooms,Area SqFt,Commission %,Guests Capacity"
+                    rows={4}
+                    className="w-full px-3.5 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-mono outline-none focus:ring-1 focus:ring-zinc-400 transition-all resize-y"
+                  />
+                  
+                  <p className="text-[10px] text-zinc-400 leading-normal flex items-start gap-1">
+                    <Info className="w-3.5 h-3.5 text-zinc-550 shrink-0 mt-0.5" />
+                    <span>
+                      Guidelines: The first line must designate column header variables. Valid properties include <strong>Unit Number</strong>, <strong>Building</strong>, <strong>Landlord</strong>, <strong>Category</strong>, <strong>Price</strong>, <strong>Bedrooms</strong>, <strong>Size</strong>, <strong>Commission</strong>, and <strong>Guests</strong>.
+                    </span>
+                  </p>
+                </div>
               </div>
 
               {importPreview.length > 0 && (

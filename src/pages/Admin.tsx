@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { jsPDF } from 'jspdf';
 import { db, storage } from '../lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 import { 
@@ -35,7 +36,12 @@ import {
   HelpCircle,
   AlertCircle,
   Check,
-  Key
+  Key,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  Loader2,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -189,9 +195,20 @@ export default function Admin() {
   const [stats, setStats] = useState({ totalRevenue: 0, pendingBookings: 0, activeProperties: 0 });
 
   // Modals visibility state
+  // stats and modals states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [initialFormToEdit, setInitialFormToEdit] = useState<PropertyForm | null>(null);
+
+  // Bulk properties states
+  const [showBulkProperties, setShowBulkProperties] = useState(false);
+  const [bulkPropertiesCsv, setBulkPropertiesCsv] = useState('');
+  const [bulkPropertiesPreview, setBulkPropertiesPreview] = useState<any[]>([]);
+  const [bulkPropertiesError, setBulkPropertiesError] = useState('');
+  const [bulkPropertiesSuccess, setBulkPropertiesSuccess] = useState('');
+  const [isDragOverPropertiesCsv, setIsDragOverPropertiesCsv] = useState(false);
+  const [isBulkImportingProperties, setIsBulkImportingProperties] = useState(false);
+  const propertiesFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Deletion operation state
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -421,6 +438,379 @@ export default function Admin() {
       console.error("Admin: Error updating booking status:", err);
       alert("Failed to update booking: " + (err as Error).message);
     }
+  };
+
+  // --- PROPERTIES CSV / TEXT BULK IMPORTER & EXPORTER UTILS ---
+  const loadPropertiesSampleCsv = () => {
+    const headers = [
+      "Title",
+      "Category",
+      "Description",
+      "Price",
+      "Unit Number",
+      "Building Name",
+      "Reference No",
+      "Purpose",
+      "Furnishing",
+      "Size SqFt",
+      "Max Guests",
+      "Bedrooms",
+      "Bathrooms",
+      "Address",
+      "Lat",
+      "Lng"
+    ].join(",");
+    const sampleRecord = [
+      "Elegance Residences Marina Suite",
+      "Apartment",
+      "High-floor premium luxury penthouse apartment with direct Marina bay and Sea views.",
+      "1200",
+      "4005",
+      "Marina Sky Heights Tower",
+      `AHH-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,
+      "For Rent",
+      "Furnished",
+      "1850",
+      "6",
+      "3",
+      "3.5",
+      "Al Marsa Street, Dubai Marina East",
+      "25.2048",
+      "55.2708"
+    ].map(v => `"${v}"`).join(",");
+    setBulkPropertiesCsv(headers + "\n" + sampleRecord);
+    setBulkPropertiesError('');
+    setBulkPropertiesSuccess('Sample holiday home listing template loaded.');
+  };
+
+  const parseAndPreviewPropertiesCsv = (text: string) => {
+    setBulkPropertiesError('');
+    setBulkPropertiesPreview([]);
+    if (!text.trim()) return;
+
+    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length < 2) {
+      setBulkPropertiesError("CSV must contain a header row followed by at least 1 record row.");
+      return;
+    }
+
+    const parseCsvLine = (line: string): string[] => {
+      const values: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      for (let c = 0; c < line.length; c++) {
+        const char = line[c];
+        if (char === '"' || char === "'") {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim().replace(/^["']|["']$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim().replace(/^["']|["']$/g, ''));
+      return values;
+    };
+
+    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+    const tempPreview: any[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cells = parseCsvLine(lines[i]);
+      if (cells.length === 0 || (cells.length === 1 && cells[0] === "")) continue;
+
+      const record: any = {
+        amenities: {
+          features: ["Air Conditioning", "Wi-Fi", "Fully Equipped Kitchen", "Balcony"],
+          building: ["Elevator", "24 Hours Security", "Parking Space"]
+        },
+        images: {
+          avif: [],
+          webp: ["https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=600&auto=format&fit=crop"],
+          png: []
+        }
+      };
+
+      headers.forEach((h, index) => {
+        const val = cells[index] || '';
+        if (h === "title" || h.includes("title")) record.title = val;
+        else if (h === "category" || h.includes("type")) record.category = val;
+        else if (h === "description" || h.includes("desc")) record.description = val;
+        else if (h === "price" || h.includes("rate")) record.price = Number(val) || 0;
+        else if (h.includes("unit number") || h === "unit") record.unitNumber = val;
+        else if (h.includes("building name") || h === "building") record.buildingName = val;
+        else if (h.includes("ref") || h.includes("reference")) record.referenceNo = val;
+        else if (h === "purpose") record.purpose = val === "For Sale" ? "For Sale" : "For Rent";
+        else if (h === "furnishing") record.furnishing = val === "Unfurnished" ? "Unfurnished" : "Furnished";
+        else if (h.includes("size") || h.includes("sqft")) record.size = Number(val) || 0;
+        else if (h.includes("guest") || h.includes("capacity")) record.maxGuests = Number(val) || 2;
+        else if (h.includes("bedroom") || h === "beds") record.bedrooms = Number(val) || 1;
+        else if (h.includes("bathroom") || h === "baths") record.bathrooms = Number(val) || 1;
+        else if (h === "address" || h.includes("location")) record.address = val;
+        else if (h === "lat") record.lat = Number(val) || 25.2048;
+        else if (h === "lng") record.lng = Number(val) || 55.2708;
+      });
+
+      if (!record.title) {
+        setBulkPropertiesError(`Row ${i} is missing high-priority 'Title' field.`);
+        return;
+      }
+      if (!record.price) {
+        setBulkPropertiesError(`Row ${i} is missing required 'Price' field.`);
+        return;
+      }
+      if (!record.referenceNo) {
+        record.referenceNo = `AHH-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+      }
+      if (!record.category) record.category = "Apartment";
+      if (!record.purpose) record.purpose = "For Rent";
+      if (!record.furnishing) record.furnishing = "Furnished";
+
+      tempPreview.push(record);
+    }
+
+    setBulkPropertiesPreview(tempPreview);
+  };
+
+  const handlePropertiesCsvFileLoad = (file: File) => {
+    if (!file) return;
+    const isCsv = file.name.endsWith('.csv') || file.type === 'text/csv' || file.name.endsWith('.txt');
+    if (!isCsv) {
+      setBulkPropertiesError("Invalid file type. Please upload a valid CSV file (.csv) or text file (.txt).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) {
+        setBulkPropertiesCsv(text);
+        setBulkPropertiesSuccess(`Loaded file "${file.name}"! Correct fields mapped.`);
+        parseAndPreviewPropertiesCsv(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmImportProperties = async () => {
+    if (bulkPropertiesPreview.length === 0) return;
+    setIsBulkImportingProperties(true);
+    setBulkPropertiesSuccess('');
+    setBulkPropertiesError('');
+    let importedCount = 0;
+
+    try {
+      for (const item of bulkPropertiesPreview) {
+        const propertyData: any = {
+          title: item.title,
+          category: item.category,
+          description: item.description || "State-of-the-art managed holiday home unit. Elegantly designed.",
+          price: Number(item.price),
+          unitNumber: item.unitNumber || '',
+          buildingName: item.buildingName || '',
+          referenceNo: item.referenceNo,
+          purpose: item.purpose,
+          furnishing: item.furnishing,
+          size: Number(item.size || 0),
+          maxGuests: Number(item.maxGuests || 2),
+          bedrooms: Number(item.bedrooms || 1),
+          bathrooms: Number(item.bathrooms || 1),
+          amenities: item.amenities,
+          location: {
+            address: item.address || 'Dubai Marina, Dubai',
+            lat: Number(item.lat || 25.2048),
+            lng: Number(item.lng || 55.2708)
+          },
+          images: item.images,
+          rating: 5.0,
+          isAvailable: true,
+          minimumNights: 30,
+          hostId: user?.uid || 'super_admin_host',
+          reviewCount: 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        await addDoc(collection(db, 'properties'), propertyData);
+        importedCount++;
+      }
+
+      setBulkPropertiesSuccess(`Successfully imported and synched ${importedCount} property listings into database memory!`);
+      setBulkPropertiesPreview([]);
+      setBulkPropertiesCsv('');
+      await fetchData();
+      setTimeout(() => setShowBulkProperties(false), 2000);
+    } catch (err: any) {
+      setBulkPropertiesError(`Error inserting batch properties: ${err.message}`);
+    } finally {
+      setIsBulkImportingProperties(false);
+    }
+  };
+
+  const escapeCsvVal = (val: any): string => {
+    if (val === null || val === undefined) return '""';
+    let str = String(val);
+    str = str.replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const handleExportPropertiesCSV = () => {
+    const listToExport = filteredProperties.length > 0 ? filteredProperties : properties;
+    const headers = [
+      "Property ID",
+      "Title",
+      "Category",
+      "Price",
+      "Unit Number",
+      "Building Name",
+      "Reference No",
+      "Purpose",
+      "Furnishing",
+      "Size SqFt",
+      "Max Guests",
+      "Bedrooms",
+      "Bathrooms",
+      "Address",
+      "Latitude",
+      "Longitude",
+      "AvailabilityStatus"
+    ];
+    const csvRows = [headers.join(',')];
+
+    listToExport.forEach(p => {
+      const row = [
+        escapeCsvVal(p.id),
+        escapeCsvVal(p.title),
+        escapeCsvVal(p.category),
+        escapeCsvVal(p.price),
+        escapeCsvVal(p.unitNumber),
+        escapeCsvVal(p.buildingName),
+        escapeCsvVal(p.referenceNo),
+        escapeCsvVal(p.purpose),
+        escapeCsvVal(p.furnishing),
+        escapeCsvVal(p.size),
+        escapeCsvVal(p.maxGuests),
+        escapeCsvVal(p.bedrooms),
+        escapeCsvVal(p.bathrooms),
+        escapeCsvVal(p.location?.address),
+        escapeCsvVal(p.location?.lat),
+        escapeCsvVal(p.location?.lng),
+        escapeCsvVal(p.isAvailable ? "Available" : "Booked")
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `properties_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPropertiesPDF = () => {
+    const listToExport = filteredProperties.length > 0 ? filteredProperties : properties;
+    const doc = new jsPDF('l', 'mm', 'a4'); // landscape A4
+
+    // Header Background
+    doc.setFillColor(24, 24, 27);
+    doc.rect(0, 0, 297, 24, 'F');
+
+    // Header text
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("AUTHENTIC HOLIDAY HOMES — PROPERTIES INVENTORY REPORT", 15, 15);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(180, 180, 180);
+    doc.text(`Generated: ${new Date().toLocaleString()} | Total items: ${listToExport.length}`, 220, 15);
+
+    doc.setTextColor(24, 24, 27);
+    const yStart = 35;
+    const cols = [
+      { name: "Reference No", x: 15 },
+      { name: "Listing Title", x: 45 },
+      { name: "Category", x: 110 },
+      { name: "Building Name", x: 135 },
+      { name: "Price / Night", x: 185 },
+      { name: "Bed / Bath", x: 215 },
+      { name: "Address", x: 235 }
+    ];
+
+    // Table Header Accent
+    doc.setFillColor(244, 244, 245);
+    doc.rect(12, yStart - 5, 273, 8, 'F');
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    cols.forEach(col => {
+      doc.text(col.name, col.x, yStart);
+    });
+
+    let currentY = yStart + 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+
+    listToExport.forEach((p, idx) => {
+      if (currentY > 192) {
+        doc.addPage();
+
+        // Repeating Header
+        doc.setFillColor(24, 24, 27);
+        doc.rect(0, 0, 297, 18, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("AUTHENTIC HOLIDAY HOMES — PROPERTIES INVENTORY REPORT (CONTINUED)", 15, 11);
+
+        doc.setFillColor(244, 244, 245);
+        doc.rect(12, 28, 273, 8, 'F');
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(24, 24, 27);
+        cols.forEach(col => {
+          doc.text(col.name, col.x, 33);
+        });
+
+        currentY = 41;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+      }
+
+      // Alternating row highlights
+      if (idx % 2 === 1) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(12, currentY - 4.5, 273, 7, 'F');
+      }
+
+      const stripSubtitle = (str: string, max: number): string => {
+        if (!str) return '—';
+        if (str.length <= max) return str;
+        return str.substring(0, max - 2) + "..";
+      };
+
+      doc.setTextColor(40, 40, 40);
+      doc.text(p.referenceNo || 'AHH-PENDING', 15, currentY);
+      doc.text(stripSubtitle(p.title || '', 32), 45, currentY);
+      doc.text(p.category || 'Apartment', 110, currentY);
+      doc.text(stripSubtitle(p.buildingName || '', 24), 135, currentY);
+      doc.text(`AED ${p.price}`, 185, currentY);
+      doc.text(`${p.bedrooms || 0} Beds / ${p.bathrooms || 0} Baths`, 215, currentY);
+      doc.text(stripSubtitle(p.location?.address || '', 28), 235, currentY);
+
+      // Horizontal border line
+      doc.setDrawColor(240, 240, 240);
+      doc.line(12, currentY + 3, 285, currentY + 3);
+
+      currentY += 7.5;
+    });
+
+    doc.save(`properties_inventory_report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const isDeveloperUser = user?.email?.toLowerCase() === 'fakharalimirza@gmail.com';
@@ -1022,6 +1412,209 @@ export default function Admin() {
                       </div>
                     )}
                   </div>
+
+                  {/* Bulk Properties Operator Trigger Bar */}
+                  <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-150 dark:border-zinc-805 rounded-2xl">
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium font-sans">
+                      <Database className="w-4 h-4 text-brand shrink-0" />
+                      <span>Configure, import or bulk download full properties registries.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkProperties(!showBulkProperties)}
+                      className="px-4 py-2 bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-105 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-450" />
+                      Bulk Operations
+                    </button>
+                  </div>
+
+                  {/* Bulk Properties Operations Panel */}
+                  {showBulkProperties && (
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-3xl p-6 shadow-sm space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+                        <div>
+                          <h3 className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-2">
+                            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                            Bulk Management (Properties & Listings)
+                          </h3>
+                          <p className="text-[11px] text-zinc-450">
+                            Bulk upload new Holiday Houses / listings or export filtered data to CSV or printable landscape PDF layouts.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button; button"
+                            onClick={handleExportPropertiesCSV}
+                            className="px-3.5 py-1.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-xl text-[11px] font-bold text-zinc-700 dark:text-zinc-350 flex items-center gap-1.5 cursor-pointer transition-all"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-500" /> Export CSV Listings
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleExportPropertiesPDF}
+                            className="px-3.5 py-1.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-xl text-[11px] font-bold text-zinc-700 dark:text-zinc-350 flex items-center gap-1.5 cursor-pointer transition-all"
+                          >
+                            <Download className="w-3.5 h-3.5 text-red-500" /> Export PDF Registry
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Drag and Drop Zone */}
+                        <div className="space-y-4">
+                          <input
+                            type="file"
+                            ref={propertiesFileInputRef}
+                            className="hidden"
+                            accept=".csv,text/csv,.txt"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handlePropertiesCsvFileLoad(file);
+                            }}
+                          />
+
+                          <div
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setIsDragOverPropertiesCsv(true);
+                            }}
+                            onDragLeave={() => setIsDragOverPropertiesCsv(false)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setIsDragOverPropertiesCsv(false);
+                              const file = e.dataTransfer.files?.[0];
+                              if (file) handlePropertiesCsvFileLoad(file);
+                            }}
+                            onClick={() => propertiesFileInputRef.current?.click()}
+                            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2.5 ${
+                              isDragOverPropertiesCsv
+                                ? 'border-zinc-900 dark:border-white'
+                                : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 bg-zinc-50/50 dark:bg-zinc-900/40'
+                            }`}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-750 dark:text-zinc-200">
+                              <FileSpreadsheet className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-black text-zinc-800 dark:text-zinc-200">
+                                Drag & drop your listing CSV file here, or <span className="text-brand hover:underline">browse local files</span>
+                              </p>
+                              <p className="text-[10px] text-zinc-450 dark:text-zinc-500">
+                                Imports titles, pricing, size, guests cap, bedroom numbers, and locations.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="relative flex items-center justify-center py-1">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-zinc-150 dark:border-zinc-800"></div>
+                            </div>
+                            <span className="relative px-3 bg-white dark:bg-zinc-900 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                              Or pasted manual input
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-zinc-450 dark:text-zinc-400">
+                              <span>Paste Raw CSV Listings values:</span>
+                              <button
+                                type="button"
+                                onClick={loadPropertiesSampleCsv}
+                                className="text-blue-500 hover:text-blue-600 cursor-pointer flex items-center gap-1 normal-case"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Load Properties Sample
+                              </button>
+                            </div>
+
+                            <textarea
+                              value={bulkPropertiesCsv}
+                              onChange={(e) => {
+                                setBulkPropertiesCsv(e.target.value);
+                                parseAndPreviewPropertiesCsv(e.target.value);
+                              }}
+                              placeholder="Title,Category,Description,Price,Unit Number,Building Name,Reference No,Purpose,Furnishing,Size SqFt,Max Guests,Bedrooms,Bathrooms,Address,Lat,Lng"
+                              rows={4}
+                              className="w-full px-3.5 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-mono outline-none focus:ring-1 focus:ring-zinc-400 transition-all resize-y"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Live Parsing preview and action */}
+                        <div className="space-y-4">
+                          <h4 className="font-extrabold uppercase text-[10px] tracking-wider text-zinc-455">Parsed Listing Preview</h4>
+
+                          {bulkPropertiesError && (
+                            <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-xs rounded-xl flex items-center gap-1.5 border border-red-100 dark:border-red-900/30">
+                              <AlertCircle className="w-4 h-4 text-red-500" />
+                              <span>{bulkPropertiesError}</span>
+                            </div>
+                          )}
+
+                          {bulkPropertiesSuccess && (
+                            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 text-xs rounded-xl flex items-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40">
+                              <Check className="w-4 h-4 text-emerald-500" />
+                              <span>{bulkPropertiesSuccess}</span>
+                            </div>
+                          )}
+
+                          {bulkPropertiesPreview.length > 0 ? (
+                            <div className="space-y-3">
+                              <div className="border border-zinc-150 dark:border-zinc-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                                <table className="w-full text-left border-collapse text-[11px]">
+                                  <thead>
+                                    <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-extrabold uppercase animate-fade-in">
+                                      <th className="p-2.5">Title</th>
+                                      <th className="p-2.5">Category</th>
+                                      <th className="p-2.5">Price</th>
+                                      <th className="p-2.5">Beds/Baths</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {bulkPropertiesPreview.map((item, idx) => (
+                                      <tr key={idx} className="border-b border-zinc-155/50 dark:border-zinc-800/50 text-zinc-750 dark:text-zinc-300">
+                                        <td className="p-2.5 font-bold truncate max-w-[120px]">{item.title}</td>
+                                        <td className="p-2.5">{item.category}</td>
+                                        <td className="p-2.5">AED {item.price}</td>
+                                        <td className="p-2.5">{item.bedrooms} Bed / {item.bathrooms} Bath</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950 p-2.5 px-4 rounded-xl border border-zinc-150 dark:border-zinc-800">
+                                <span className="text-xs text-zinc-500 font-bold">
+                                  Parsed {bulkPropertiesPreview.length} properties ready for database syncing.
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={isBulkImportingProperties}
+                                  onClick={handleConfirmImportProperties}
+                                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                  {isBulkImportingProperties ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Committing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" /> Sync Holiday Houses
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center text-xs text-zinc-400 flex flex-col items-center justify-center gap-2">
+                              <Info className="w-6 h-6 text-zinc-350" />
+                              <span>No parsed properties preview available. Drag & drop a spreadsheet or use the sample loaded.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <PropertyFormModal 
                     isOpen={isModalOpen}
