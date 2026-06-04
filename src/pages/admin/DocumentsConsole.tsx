@@ -62,11 +62,16 @@ export default function DocumentsConsole() {
         id: doc.id,
         ...doc.data()
       })) as SecuredDoc[];
-      // Sort in reverse chronological order
+      // Sort in reverse chronological order (supporting standard timestamps and Date string structures)
       docsList.sort((a, b) => {
-        const timeA = a.uploadedAt?.seconds || 0;
-        const timeB = b.uploadedAt?.seconds || 0;
-        return timeB - timeA;
+        const getTs = (val: any) => {
+          if (!val) return 0;
+          if (typeof val.seconds === 'number') return val.seconds * 1000;
+          if (typeof val.toDate === 'function') return val.toDate().getTime();
+          const t = Date.parse(val);
+          return isNaN(t) ? 0 : t;
+        };
+        return getTs(b.uploadedAt) - getTs(a.uploadedAt);
       });
       setDocuments(docsList);
       setLoading(false);
@@ -115,9 +120,17 @@ export default function DocumentsConsole() {
     }
   };
 
+  const getSecureDocViewUrl = (url: string) => {
+    if (!url) return '';
+    if (url.includes('/api/admin/view-document')) return url;
+    const token = localStorage.getItem('ahh_token') || '';
+    return `${window.location.origin}/api/admin/view-document?url=${encodeURIComponent(url)}&token=${encodeURIComponent(token)}`;
+  };
+
   const handleCopyLink = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setClipboardMessage(url);
+    const secureUrl = getSecureDocViewUrl(url);
+    navigator.clipboard.writeText(secureUrl);
+    setClipboardMessage(secureUrl);
     setTimeout(() => {
       setClipboardMessage(null);
     }, 2005);
@@ -144,12 +157,20 @@ export default function DocumentsConsole() {
       return;
     }
 
-    // Determine the entity identifier
+    let buildingName = '';
+    let unitNumber = '';
     let finalIdentifier = '';
+    // Determine the entity identifier
     if (category === 'properties') {
       if (selectedProperty) {
         const prop = properties.find(p => p.id === selectedProperty);
-        finalIdentifier = prop ? `Unit ${prop.unitNumber} - ${prop.buildingName}` : selectedProperty;
+        if (prop) {
+          finalIdentifier = `Unit ${prop.unitNumber} - ${prop.buildingName}`;
+          buildingName = prop.buildingName || '';
+          unitNumber = prop.unitNumber || '';
+        } else {
+          finalIdentifier = selectedProperty;
+        }
       } else if (customIdentifier) {
         finalIdentifier = customIdentifier;
       } else {
@@ -174,6 +195,8 @@ export default function DocumentsConsole() {
       formData.append('category', category);
       formData.append('identifier', finalIdentifier);
       formData.append('docType', docType);
+      if (buildingName) formData.append('buildingName', buildingName);
+      if (unitNumber) formData.append('unitNumber', unitNumber);
 
       console.log("Submitting API secure file payload...");
       const response = await fetch('/api/admin/upload-document', {
@@ -196,6 +219,7 @@ export default function DocumentsConsole() {
         docType,
         fileName: resData.fileName,
         originalName: resData.originalName,
+        title: resData.originalName || resData.fileName || 'General Document',
         url: resData.url,
         storageType: resData.storageType,
         uploadedBy: user?.uid || 'system',
@@ -245,13 +269,17 @@ export default function DocumentsConsole() {
     return dt.replace(/_/g, " ").toUpperCase();
   };
 
-  // Filtering code block
+  // Safe filtering code block (completely null-safe to prevent runtime crash when originalName is missing)
   const filteredDocs = documents.filter(docObj => {
     const matchCategory = activeTab === 'all' || docObj.category === activeTab;
+    const nameToSearch = docObj.originalName || docObj.title || docObj.fileName || '';
+    const identifierToSearch = docObj.identifier || '';
+    const docTypeToSearch = docObj.docType || '';
+    
     const matchSearch = 
-      docObj.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      docObj.identifier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      docObj.docType.toLowerCase().includes(searchQuery.toLowerCase());
+      nameToSearch.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      identifierToSearch.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      docTypeToSearch.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCategory && matchSearch;
   });
 
@@ -546,17 +574,33 @@ export default function DocumentsConsole() {
                         </span>
                       </td>
                       <td className="p-4 max-w-xs truncate">
-                        <div className="text-xs text-zinc-700 dark:text-zinc-300 transition-colors select-all font-sans font-medium" title={docObj.originalName}>
-                          {docObj.originalName}
+                        <div className="text-xs text-zinc-700 dark:text-zinc-300 transition-colors select-all font-sans font-medium" title={docObj.originalName || docObj.title || docObj.fileName}>
+                          {docObj.originalName || docObj.title || docObj.fileName || 'Unnamed Document'}
                         </div>
                         <div className="text-[9px] font-mono text-zinc-405 truncate dark:text-zinc-500 mt-0.5">Obfuscated: {docObj.fileName}</div>
                       </td>
                       <td className="p-4">
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 font-black">{docObj.uploadedByName}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 font-black">{docObj.uploadedByName || 'Administrator'}</div>
                         <div className="text-[10px] text-zinc-405 dark:text-zinc-500">
-                          {docObj.uploadedAt?.seconds ? new Date(docObj.uploadedAt.seconds * 1000).toLocaleDateString("en-AE", {
-                            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                          }) : 'Archiving...'}
+                          {(() => {
+                            const val = docObj.uploadedAt;
+                            if (!val) return 'Archiving...';
+                            if (typeof val.seconds === 'number') {
+                              return new Date(val.seconds * 1000).toLocaleDateString("en-AE", {
+                                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                              });
+                            }
+                            if (typeof val.toDate === 'function') {
+                              return val.toDate().toLocaleDateString("en-AE", {
+                                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                              });
+                            }
+                            const t = Date.parse(val);
+                            if (isNaN(t)) return 'Archiving...';
+                            return new Date(t).toLocaleDateString("en-AE", {
+                              day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            });
+                          })()}
                         </div>
                       </td>
                       <td className="p-4 text-right">
@@ -574,7 +618,7 @@ export default function DocumentsConsole() {
                           </button>
                           
                           <a
-                            href={docObj.url}
+                            href={getSecureDocViewUrl(docObj.url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 bg-zinc-50 dark:bg-zinc-800 text-zinc-550 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-blue-500 hover:border-blue-200 transition-all"

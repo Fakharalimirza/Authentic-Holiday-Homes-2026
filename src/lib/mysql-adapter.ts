@@ -171,7 +171,12 @@ export async function getDoc(docRef: any) {
       id
     };
   }
-  const data = await res.json();
+  let data: any = {};
+  try {
+    data = await res.json();
+  } catch (err) {
+    console.warn("[Adapter] getDoc failed to parse response JSON: ", err);
+  }
   let singular = collectionName.replace(/s$/, '');
   if (collectionName === 'properties') {
     singular = 'property';
@@ -205,7 +210,12 @@ export async function getDocs(queryOrCol: any) {
   if (!res.ok) {
     return { docs: [] };
   }
-  const data = await res.json();
+  let data: any = {};
+  try {
+    data = await res.json();
+  } catch (err) {
+    console.warn("[Adapter] getDocs failed to parse response JSON: ", err);
+  }
   const cKey = getCollectionKey(collectionName);
   let list = data[cKey] || data[collectionName] || data.data || [];
 

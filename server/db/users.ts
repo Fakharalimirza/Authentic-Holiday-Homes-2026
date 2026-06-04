@@ -2,36 +2,61 @@ import { query } from './connection';
 
 // --- USERS SECTION ---
 export async function saveUser(uid: string, data: any): Promise<void> {
-  let finalRole = data.role || 'guest';
-  if (data.email && data.email.toLowerCase() === 'fakharalimirza@gmail.com') {
-    finalRole = 'super_admin';
-  }
-  const wishlistJson = JSON.stringify(data.wishlist || []);
-  const passVal = data.password || '';
+  const existing = await getUser(uid);
+  if (existing) {
+    const merged = {
+      ...existing,
+      ...data
+    };
+    let finalRole = merged.role || 'guest';
+    if (merged.email && merged.email.toLowerCase() === 'fakharalimirza@gmail.com') {
+      finalRole = 'super_admin';
+    }
+    const wishlistJson = JSON.stringify(merged.wishlist || []);
+    
+    await query(`
+      UPDATE users 
+      SET email = ?,
+          displayName = ?,
+          password = ?,
+          phone = ?,
+          role = ?,
+          wishlist = ?
+      WHERE uid = ?
+    `, [
+      merged.email,
+      merged.displayName || '',
+      merged.password || '',
+      merged.phone || '',
+      finalRole,
+      wishlistJson,
+      uid
+    ]);
+  } else {
+    let finalRole = data.role || 'guest';
+    if (data.email && data.email.toLowerCase() === 'fakharalimirza@gmail.com') {
+      finalRole = 'super_admin';
+    }
+    const wishlistJson = JSON.stringify(data.wishlist || []);
+    const emailVal = data.email || '';
+    const passVal = data.password || '';
+    const displayVal = data.displayName || '';
+    const phoneVal = data.phone || '';
 
-  if (passVal) {
     await query(`
       INSERT INTO users (uid, email, displayName, password, phone, role, wishlist)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        email = VALUES(email),
-        displayName = VALUES(displayName),
-        password = VALUES(password),
-        phone = VALUES(phone),
-        role = VALUES(role),
-        wishlist = VALUES(wishlist)
-    `, [uid, data.email, data.displayName || '', passVal, data.phone || '', finalRole, wishlistJson]);
-  } else {
-    await query(`
-      INSERT INTO users (uid, email, displayName, phone, role, wishlist)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        email = VALUES(email),
-        displayName = VALUES(displayName),
-        phone = VALUES(phone),
-        role = VALUES(role),
-        wishlist = VALUES(wishlist)
-    `, [uid, data.email, data.displayName || '', data.phone || '', finalRole, wishlistJson]);
+    `, [uid, emailVal, displayVal, passVal, phoneVal, finalRole, wishlistJson]);
+  }
+}
+
+function safeParseWishlist(wishlistStr: any): any[] {
+  if (!wishlistStr) return [];
+  try {
+    const parsed = typeof wishlistStr === 'string' ? JSON.parse(wishlistStr) : wishlistStr;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
   }
 }
 
@@ -51,7 +76,7 @@ export async function getUser(uid: string): Promise<any | null> {
     phone: row.phone || '',
     role: finalRole,
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-    wishlist: row.wishlist ? JSON.parse(row.wishlist) : []
+    wishlist: safeParseWishlist(row.wishlist)
   };
 }
 
@@ -71,7 +96,7 @@ export async function getUserByEmail(email: string): Promise<any | null> {
     phone: row.phone || '',
     role: finalRole,
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-    wishlist: row.wishlist ? JSON.parse(row.wishlist) : []
+    wishlist: safeParseWishlist(row.wishlist)
   };
 }
 
@@ -89,7 +114,7 @@ export async function getAllUsers(): Promise<any[]> {
       phone: row.phone || '',
       role: finalRole,
       createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-      wishlist: row.wishlist ? JSON.parse(row.wishlist) : []
+      wishlist: safeParseWishlist(row.wishlist)
     };
   });
 }

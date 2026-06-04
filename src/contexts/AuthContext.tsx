@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let unsubProfile: (() => void) | null = null;
+    let isCreatingProfile = false;
     const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (unsubProfile) {
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         unsubProfile = null;
       }
       if (currentUser) {
+        isCreatingProfile = false;
         console.log("Auth: Listening to profile for", currentUser.uid);
         unsubProfile = onSnapshot(doc(db, 'users', currentUser.uid), async (docSnap) => {
           if (docSnap.exists()) {
@@ -53,6 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setLoading(false);
           } else {
+            if (isCreatingProfile) {
+              console.log("Auth: Profile creation in progress/already completed, bypassing recursive onSnapshot callback.");
+              return;
+            }
+            isCreatingProfile = true;
             console.log("Auth: Profile not found, creating initial...");
             const newProfile = {
               uid: currentUser.uid,
@@ -73,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             } catch (err) {
               console.error("Auth profile creation error:", err);
+              isCreatingProfile = false;
             }
             setLoading(false);
           }

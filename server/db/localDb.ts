@@ -233,41 +233,60 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
     else if (tableName === "audit_logs") keyName = "id";
 
     if (tableName === "users") {
-      const [uid, email, displayName, passwordOrPhone, phoneOrRole, roleOrWishlist, wishlistVal] = params;
-      let password = "";
-      let phone = "";
-      let role = "";
-      let wishlist = "[]";
+      let resolvedUid = "";
+      let resolvedEmail = "";
+      let resolvedDisplayName = "";
+      let resolvedPassword = "";
+      let resolvedPhone = "";
+      let resolvedRole = "";
+      let resolvedWishlist = "[]";
 
-      if (params.length === 7) {
-        password = passwordOrPhone;
-        phone = phoneOrRole;
-        role = roleOrWishlist;
-        wishlist = wishlistVal;
+      if (norm.startsWith("update users")) {
+        // params: [email, displayName, password, phone, role, wishlist, uid]
+        resolvedEmail = params[0] || "";
+        resolvedDisplayName = params[1] || "";
+        resolvedPassword = params[2] || "";
+        resolvedPhone = params[3] || "";
+        resolvedRole = params[4] || "";
+        resolvedWishlist = params[5] || "[]";
+        resolvedUid = params[6] || "";
       } else {
-        phone = passwordOrPhone;
-        role = phoneOrRole;
-        wishlist = roleOrWishlist;
+        // params: [uid, email, displayName, passwordOrPhone, phoneOrRole, roleOrWishlist, wishlistVal]
+        const [uidVal, emailVal, displayNameVal, passwordOrPhone, phoneOrRole, roleOrWishlist, wishlistVal] = params;
+        resolvedUid = uidVal || "";
+        resolvedEmail = emailVal || "";
+        resolvedDisplayName = displayNameVal || "";
+        
+        if (params.length === 7) {
+          resolvedPassword = passwordOrPhone || "";
+          resolvedPhone = phoneOrRole || "";
+          resolvedRole = roleOrWishlist || "";
+          resolvedWishlist = wishlistVal || "[]";
+        } else {
+          resolvedPhone = passwordOrPhone || "";
+          resolvedRole = phoneOrRole || "";
+          resolvedWishlist = roleOrWishlist || "[]";
+        }
       }
 
       let parsedWishlist = [];
-      try { parsedWishlist = typeof wishlist === "string" ? JSON.parse(wishlist) : (wishlist || []); } catch(e){}
+      try { parsedWishlist = typeof resolvedWishlist === "string" ? JSON.parse(resolvedWishlist) : (resolvedWishlist || []); } catch(e){}
 
-      const userRecord = {
-        uid,
-        email: email || "",
-        displayName: displayName || "",
-        password: password || "",
-        phone: phone || "",
-        role: (email && email.toLowerCase() === 'fakharalimirza@gmail.com') ? 'super_admin' : (role || 'guest'),
-        createdAt: new Date().toISOString(),
+      const userRecord: any = {
+        uid: resolvedUid,
+        email: resolvedEmail || "",
+        displayName: resolvedDisplayName || "",
+        password: resolvedPassword || "",
+        phone: resolvedPhone || "",
+        role: (resolvedEmail && resolvedEmail.toLowerCase() === 'fakharalimirza@gmail.com') ? 'super_admin' : (resolvedRole || 'guest'),
         wishlist: Array.isArray(parsedWishlist) ? parsedWishlist : []
       };
 
-      const existingIdx = tableData.findIndex(row => row[keyName] === uid);
+      const existingIdx = tableData.findIndex(row => row[keyName] === resolvedUid);
       if (existingIdx >= 0) {
         db.users[existingIdx] = { ...db.users[existingIdx], ...userRecord };
       } else {
+        userRecord.createdAt = new Date().toISOString();
         db.users.push(userRecord);
       }
     } else if (tableName === "properties") {

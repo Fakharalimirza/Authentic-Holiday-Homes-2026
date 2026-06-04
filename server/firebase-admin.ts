@@ -1,4 +1,5 @@
 import { Request } from "express";
+import crypto from "crypto";
 
 export function getFirebaseBucket() {
   console.warn("getFirebaseBucket called. GCS storage is disabled as cPanel VPS FTP Storage is active.");
@@ -13,7 +14,22 @@ export const decodeJwtSafely = (token: string) => {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const payloadB64 = parts[1];
+    const [headerB64, payloadB64, signature] = parts;
+
+    // Recalculate and verify signature
+    const secretKey = process.env.JWT_SECRET || process.env.DB_PASS || "fallback_secured_holiday_homes_portal_key_2026";
+    const expectedSignature = crypto.createHmac("sha256", secretKey)
+      .update(`${headerB64}.${payloadB64}`)
+      .digest("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
+
+    if (signature !== expectedSignature) {
+      console.error("[JWT Verification] Invalid token signature detected!");
+      return null;
+    }
+
     const decodedPayload = Buffer.from(payloadB64, 'base64').toString('utf-8');
     return JSON.parse(decodedPayload);
   } catch (e) {

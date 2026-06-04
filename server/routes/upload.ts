@@ -25,8 +25,9 @@ router.post("/upload-property-images", upload.array("images"), async (req, res) 
       return res.status(400).json({ error: "Missing unitNumber or buildingName" });
     }
 
+    const safeBuildingName = buildingName.replace(/[^\s\w\-\.]/g, "_").trim();
+    const safeUnitNumber = unitNumber.replace(/[^\s\w\-\.]/g, "_").trim();
     const folderName = `${unitNumber} - ${buildingName}`;
-    const safeFolderName = folderName.replace(/[^\s\w\-\.]/g, "_").trim();
     const results = [];
 
     // Check if user has updated env settings to use Option B (cPanel VPS FTP Storage)
@@ -88,7 +89,9 @@ router.post("/upload-property-images", upload.array("images"), async (req, res) 
           await client.ensureDir(part);
         }
         await client.ensureDir("properties");
-        await client.ensureDir(safeFolderName);
+        await client.ensureDir(safeBuildingName);
+        await client.ensureDir(safeUnitNumber);
+        await client.ensureDir("images");
 
         const mediaBaseUrl = (process.env.VPS_MEDIA_BASE_URL || "https://authenticholidayhomes.ae/uploads").replace(/\/$/, "");
 
@@ -116,7 +119,7 @@ router.post("/upload-property-images", upload.array("images"), async (req, res) 
             console.log(`Streaming to cPanel directory as ${fileName}...`);
             await client.uploadFrom(uploadStream, fileName);
 
-            const publicUrl = `${mediaBaseUrl}/properties/${encodeURIComponent(safeFolderName)}/${fileName}`;
+            const publicUrl = `${mediaBaseUrl}/properties/${encodeURIComponent(safeBuildingName)}/${encodeURIComponent(safeUnitNumber)}/images/${fileName}`;
             imageSet.push({ format: format.ext, url: publicUrl });
           }
           results.push(imageSet);
@@ -137,7 +140,7 @@ router.post("/upload-property-images", upload.array("images"), async (req, res) 
     } else {
       console.log("No VPS FTP configuration for images. Custom local storage fallback active...");
       const fs = await import("fs");
-      const uploadDir = path.join(process.cwd(), "public", "uploads", "properties", safeFolderName);
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "properties", safeBuildingName, safeUnitNumber, "images");
       
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
@@ -158,8 +161,8 @@ router.post("/upload-property-images", upload.array("images"), async (req, res) 
         fs.writeFileSync(path.join(uploadDir, webpFileName), webpBuffer);
         fs.writeFileSync(path.join(uploadDir, pngFileName), pngBuffer);
 
-        const webpUrl = `/uploads/properties/${encodeURIComponent(safeFolderName)}/${webpFileName}`;
-        const pngUrl = `/uploads/properties/${encodeURIComponent(safeFolderName)}/${pngFileName}`;
+        const webpUrl = `/uploads/properties/${encodeURIComponent(safeBuildingName)}/${encodeURIComponent(safeUnitNumber)}/images/${webpFileName}`;
+        const pngUrl = `/uploads/properties/${encodeURIComponent(safeBuildingName)}/${encodeURIComponent(safeUnitNumber)}/images/${pngFileName}`;
 
         results.push([
           { format: "webp", url: webpUrl },
@@ -188,6 +191,23 @@ router.post("/upload-document", upload.single("document"), async (req, res) => {
 
     if (!category || !identifier || !docType) {
       return res.status(400).json({ error: "Missing category, identifier, or docType in request body" });
+    }
+
+    // Extract buildingName & unitNumber if category is properties
+    let buildingName = req.body.buildingName;
+    let unitNumber = req.body.unitNumber;
+
+    if (category === "properties" && (!buildingName || !unitNumber)) {
+      if (identifier && typeof identifier === "string") {
+        const match = identifier.match(/^Unit\s+(.*?)\s+-\s+(.*)$/i);
+        if (match) {
+          unitNumber = match[1].trim();
+          buildingName = match[2].trim();
+        } else {
+          unitNumber = identifier;
+          buildingName = "Unknown";
+        }
+      }
     }
 
     // Sanitize names for directory hierarchy cleanliness
@@ -259,16 +279,35 @@ router.post("/upload-document", upload.single("document"), async (req, res) => {
          for (const part of baseParts) {
            await client.ensureDir(part);
          }
-         await client.ensureDir(safeCategory);
-         await client.ensureDir(safeIdentifier);
+
+         let finalPathParts: string[] = [];
+         if (category === "properties" && buildingName && unitNumber) {
+           const safeBuildingName = buildingName.replace(/[^\s\w\-\.]/g, "_").trim();
+           const safeUnitNumber = unitNumber.replace(/[^\s\w\-\.]/g, "_").trim();
+           finalPathParts = ["properties", safeBuildingName, safeUnitNumber, "documents"];
+         } else {
+           finalPathParts = [safeCategory, safeIdentifier];
+         }
+
+         for (const folder of finalPathParts) {
+           await client.ensureDir(folder);
+         }
 
         const mediaBaseUrl = (process.env.VPS_MEDIA_BASE_URL || "https://authenticholidayhomes.ae/uploads").replace(/\/$/, "");
         const uploadStream = Readable.from(file.buffer);
 
-        console.log(`Streaming secure document to cPanel remote path ${safeCategory}/${safeIdentifier}/${outputFileName}...`);
+        let publicUrl = "";
+        if (category === "properties" && buildingName && unitNumber) {
+          const safeBuildingName = buildingName.replace(/[^\s\w\-\.]/g, "_").trim();
+          const safeUnitNumber = unitNumber.replace(/[^\s\w\-\.]/g, "_").trim();
+          publicUrl = `${mediaBaseUrl}/properties/${encodeURIComponent(safeBuildingName)}/${encodeURIComponent(safeUnitNumber)}/documents/${outputFileName}`;
+        } else {
+          publicUrl = `${mediaBaseUrl}/${encodeURIComponent(safeCategory)}/${encodeURIComponent(safeIdentifier)}/${outputFileName}`;
+        }
+
+        console.log(`Streaming secure document to cPanel remote path ${finalPathParts.join("/")}/${outputFileName}...`);
         await client.uploadFrom(uploadStream, outputFileName);
 
-        const publicUrl = `${mediaBaseUrl}/${encodeURIComponent(safeCategory)}/${encodeURIComponent(safeIdentifier)}/${outputFileName}`;
         docVpsSuccess = true;
         
         return res.json({
@@ -287,7 +326,19 @@ router.post("/upload-document", upload.single("document"), async (req, res) => {
     } else {
       console.log("No VPS FTP configuration. Utilizing local filesystem sandbox storage...");
       const fs = await import("fs");
-      const uploadDir = path.join(process.cwd(), "public", "uploads", safeCategory, safeIdentifier);
+      
+      let uploadDir = "";
+      let publicUrl = "";
+
+      if (category === "properties" && buildingName && unitNumber) {
+        const safeBuildingName = buildingName.replace(/[^\s\w\-\.]/g, "_").trim();
+        const safeUnitNumber = unitNumber.replace(/[^\s\w\-\.]/g, "_").trim();
+        uploadDir = path.join(process.cwd(), "public", "uploads", "properties", safeBuildingName, safeUnitNumber, "documents");
+        publicUrl = `/uploads/properties/${encodeURIComponent(safeBuildingName)}/${encodeURIComponent(safeUnitNumber)}/documents/${outputFileName}`;
+      } else {
+        uploadDir = path.join(process.cwd(), "public", "uploads", safeCategory, safeIdentifier);
+        publicUrl = `/uploads/${encodeURIComponent(safeCategory)}/${encodeURIComponent(safeIdentifier)}/${outputFileName}`;
+      }
       
       // Ensure directory exists
       if (!fs.existsSync(uploadDir)) {
@@ -296,8 +347,6 @@ router.post("/upload-document", upload.single("document"), async (req, res) => {
       
       const localFilePath = path.join(uploadDir, outputFileName);
       fs.writeFileSync(localFilePath, file.buffer);
-      
-      const publicUrl = `/uploads/${encodeURIComponent(safeCategory)}/${encodeURIComponent(safeIdentifier)}/${outputFileName}`;
       
       return res.json({
         success: true,
@@ -310,6 +359,77 @@ router.post("/upload-document", upload.single("document"), async (req, res) => {
   } catch (err: any) {
     console.error("Secure Document Upload Error:", err);
     res.status(500).json({ error: err.message || "Failed to process and upload secure document" });
+  }
+});
+
+// Secure Document View / Proxy Endpoint with Auth Token verification
+router.get("/view-document", async (req, res) => {
+  try {
+    const { url, token } = req.query;
+    if (!url || typeof url !== "string") {
+      return res.status(400).send("Missing secure document URL query parameter");
+    }
+    if (!token || typeof token !== "string") {
+      return res.status(401).send("Unauthorized: Authenticated session token is required to view secure documents");
+    }
+
+    // Decode and verify JWT
+    const { decodeJwtSafely } = await import("../firebase-admin");
+    const decodedToken = decodeJwtSafely(token);
+    if (!decodedToken || !decodedToken.uid) {
+      return res.status(401).send("Unauthorized: Invalid/expired session credentials");
+    }
+
+    // Verify user profile exists
+    const { getUser } = await import("../db");
+    const user = await getUser(decodedToken.uid);
+    if (!user) {
+      return res.status(401).send("Unauthorized: User profile mismatch or deactivated");
+    }
+
+    console.log(`[Secure Doc Proxy] Serving file access to user ${user.email}: ${url}`);
+
+    // If local file path
+    if (url.startsWith("/uploads/") || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+      const fs = await import("fs");
+      const cleanUrl = url.startsWith("/") ? url : "/" + url;
+      const filePath = path.join(process.cwd(), "public", cleanUrl);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Document not found in local system storage");
+      }
+
+      // Detect matching MIME/Content-Type
+      const ext = path.extname(filePath).toLowerCase();
+      let contentType = "application/octet-stream";
+      if (ext === ".pdf") contentType = "application/pdf";
+      else if (ext === ".png") contentType = "image/png";
+      else if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
+      
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", "inline");
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      return;
+    }
+
+    // Fetch elite PDF from VPS
+    const fileResponse = await fetch(url);
+    if (!fileResponse.ok) {
+      return res.status(fileResponse.status).send(`Failed to fetch secure document from remote node (Status: ${fileResponse.status})`);
+    }
+
+    const contentType = fileResponse.headers.get("content-type") || "application/pdf";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", "inline");
+
+    const arrayBuffer = await fileResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.send(buffer);
+
+  } catch (err: any) {
+    console.error("Secure Document Proxy Access Failure:", err);
+    res.status(500).send("Internal server error during secure file proxy routing: " + err.message);
   }
 });
 

@@ -19,8 +19,17 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Trust upstream reverse proxy headers (e.g. Cloud Run TLS termination)
+  app.set("trust proxy", true);
+
   // Global parsing middleware
   app.use(express.json());
+
+  // Forward standard /auth/callback popup redirects to /api/auth/google/callback internally
+  app.get(["/auth/callback", "/auth/callback/"], (req, res, next) => {
+    req.url = "/api/auth/google/callback";
+    next();
+  });
 
   // Mount API Routers
   app.get("/api/health", (req, res) => {

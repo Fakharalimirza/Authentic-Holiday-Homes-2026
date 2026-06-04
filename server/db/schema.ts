@@ -215,7 +215,14 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
   console.log("[MySQL Auto-Init] Initializing schemas verification...");
   try {
     for (const stmt of SCHEMA_STATEMENTS) {
-      await p.query(stmt);
+      try {
+        await p.query(stmt);
+      } catch (e: any) {
+        console.warn("[MySQL Auto-Init] Table verification warning:", e.message);
+        if (e.message && (e.message.includes("ETIMEDOUT") || e.message.includes("connect") || e.message.includes("ECONNREFUSED"))) {
+          throw e;
+        }
+      }
     }
     // Alter schema safety to ensure all modern properties table columns exist in cPanel MySQL
     const colsToAdd = [

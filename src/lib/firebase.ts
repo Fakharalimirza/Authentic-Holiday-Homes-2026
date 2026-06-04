@@ -204,5 +204,66 @@ export class OAuthProvider {
 }
 
 export async function signInWithPopup(authInstance: FirebaseAuthMock, provider: any): Promise<void> {
-  throw new Error("Social login is disabled. Please log in using your e-mail credentials.");
+  if (provider instanceof GoogleAuthProvider) {
+    // 1. Fetch Google auth URL from Express backend
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const res = await fetch(`/api/auth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`);
+    if (!res.ok) {
+      throw new Error("Failed to initialize Google Authentication on the backend.");
+    }
+    const { url } = await res.json();
+    
+    // 2. Open standard popup window
+    const popup = window.open(url, "google_oauth_popup", "width=500,height=650");
+    if (!popup) {
+      throw new Error("Popup blocked. Please enable popups for this site inside your browser settings.");
+    }
+    
+    // 3. Hear message from popup
+    return new Promise<void>((resolve, reject) => {
+      let isCompleted = false;
+      const handleMessage = (event: MessageEvent) => {
+        // Safe origin validation - check that message originates from either localhost, the container, or standard sub-domains
+        const origin = event.origin;
+        const isValidOrigin = 
+          origin === window.location.origin ||
+          origin.includes("localhost") || 
+          origin.includes("127.0.0.1") || 
+          origin.endsWith(".run.app");
+
+        if (!isValidOrigin) return;
+        
+        if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+          const { user, token } = event.data;
+          if (user && token) {
+            isCompleted = true;
+            clearInterval(checkClosed);
+            authInstance.updateUserSession(user, token);
+            window.removeEventListener('message', handleMessage);
+            resolve();
+          } else {
+            isCompleted = true;
+            clearInterval(checkClosed);
+            window.removeEventListener('message', handleMessage);
+            reject(new Error("Google authentication succeeded, but user data was missing."));
+          }
+        }
+      };
+      
+      window.addEventListener('message', handleMessage);
+      
+      // Safety check: close listener when popup is manual-closed by user without logging in
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handleMessage);
+          if (!isCompleted) {
+            reject(new Error("Login cancelled by user (Google popup window was closed)."));
+          }
+        }
+      }, 1000);
+    });
+  } else {
+    throw new Error("Unsupported authentication provider. Only Google Sign-In is enabled.");
+  }
 }
