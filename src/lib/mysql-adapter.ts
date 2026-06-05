@@ -506,9 +506,8 @@ export function onSnapshot(queryOrCol: any, next: (snapshot: any) => void, error
         clearInterval(adaptiveInterval);
         adaptiveInterval = null;
       }
-      if (isSocketConnected) return; // Completely idle the timer when Socket is connected
 
-      const delay = document.visibilityState === "visible" ? 20000 : 60000;
+      const delay = document.visibilityState === "visible" ? 4000 : 20000;
       adaptiveInterval = setInterval(updateDoc, delay);
     };
 
@@ -618,9 +617,8 @@ export function onSnapshot(queryOrCol: any, next: (snapshot: any) => void, error
       clearInterval(adaptiveInterval);
       adaptiveInterval = null;
     }
-    if (isSocketConnected) return; // Completely idle the timer when Socket is connected
 
-    const delay = document.visibilityState === "visible" ? 20000 : 60000;
+    const delay = document.visibilityState === "visible" ? 4000 : 20000;
     adaptiveInterval = setInterval(update, delay);
   };
 
