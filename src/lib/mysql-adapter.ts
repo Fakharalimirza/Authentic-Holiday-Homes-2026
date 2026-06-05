@@ -139,6 +139,43 @@ function getCollectionKey(col: string): string {
   return col;
 }
 
+function parseTimestamps(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => parseTimestamps(item));
+  }
+  const res: any = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val && typeof val === 'string' && (
+      key.toLowerCase().includes('date') || 
+      key.toLowerCase().includes('time') || 
+      key.toLowerCase().includes('created') || 
+      key.toLowerCase().includes('updated') || 
+      key.toLowerCase().includes('checkin') || 
+      key.toLowerCase().includes('checkout') || 
+      key.toLowerCase().includes('timestamp') ||
+      (val.includes('T') && val.endsWith('Z'))
+    )) {
+      const parsed = Date.parse(val);
+      if (!isNaN(parsed)) {
+        res[key] = {
+          seconds: Math.floor(parsed / 1000),
+          nanoseconds: 0,
+          toDate: () => new Date(parsed),
+          toString: () => val
+        };
+        continue;
+      }
+    }
+    if (val && typeof val === 'object') {
+      res[key] = parseTimestamps(val);
+    } else {
+      res[key] = val;
+    }
+  }
+  return res;
+}
+
 export async function getDoc(docRef: any) {
   const collectionName = docRef.collectionName;
   const id = docRef.id;
@@ -154,9 +191,10 @@ export async function getDoc(docRef: any) {
         const payload = await reviewsRes.json();
         const reviews = payload.reviews || [];
         const active = reviews.find((r: any) => r.id === id);
+        const mappedActive = parseTimestamps(active);
         return {
-          exists: () => !!active,
-          data: () => active || null,
+          exists: () => !!mappedActive,
+          data: () => mappedActive || null,
           id
         };
       }
@@ -182,9 +220,10 @@ export async function getDoc(docRef: any) {
     singular = 'property';
   }
   const payload = data[collectionName === 'users' ? 'user' : singular] || data.data || data[collectionName];
+  const mappedPayload = parseTimestamps(payload);
   return {
-    exists: () => !!payload,
-    data: () => payload,
+    exists: () => !!mappedPayload,
+    data: () => mappedPayload,
     id
   };
 }
@@ -258,11 +297,14 @@ export async function getDocs(queryOrCol: any) {
   }
 
   return {
-    docs: list.map((item: any) => ({
-      id: item.id || item.uid || item.token,
-      exists: () => true,
-      data: () => item
-    }))
+    docs: list.map((item: any) => {
+      const mappedItem = parseTimestamps(item);
+      return {
+        id: item.id || item.uid || item.token,
+        exists: () => true,
+        data: () => mappedItem
+      };
+    })
   };
 }
 

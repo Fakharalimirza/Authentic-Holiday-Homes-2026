@@ -1,4 +1,5 @@
 import { query } from './connection';
+import { getUser } from './users';
 
 // --- TICKETS (MAINTENANCE/SUPPORT) SECTION ---
 export async function saveTicket(id: string, ticket: any): Promise<void> {
@@ -29,43 +30,112 @@ export async function getAllTickets(): Promise<any[]> {
 
 // --- STAFF MESSAGES (CHANNEL CHAT) ---
 export async function saveStaffMessage(msg: any): Promise<void> {
+  const uid = msg.userId || msg.senderId || 'anonymous';
+  let email = msg.userEmail || msg.senderEmail;
+  if (!email && uid !== 'anonymous') {
+    const user = await getUser(uid);
+    email = user?.email;
+  }
+  if (!email) {
+    email = `${uid}@ahh-management.com`;
+  }
+
   await query(`
     INSERT INTO staff_messages (userId, userEmail, text)
     VALUES (?, ?, ?)
-  `, [msg.userId, msg.userEmail, msg.text]);
+  `, [uid, email, msg.text]);
 }
 
 export async function getAllStaffMessages(): Promise<any[]> {
-  const rows = await query("SELECT * FROM staff_messages ORDER BY createdAt DESC LIMIT 100");
+  const rows = await query(`
+    SELECT sm.*, u.displayName as senderName, u.role as senderRole 
+    FROM staff_messages sm 
+    LEFT JOIN users u ON sm.userId = u.uid 
+    ORDER BY sm.createdAt DESC LIMIT 100
+  `);
   // Sort ascending for chat UI
   rows.reverse();
-  return rows.map((row: any) => ({
-    id: String(row.id),
-    userId: row.userId,
-    userEmail: row.userEmail,
-    text: row.text,
-    createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
-  }));
+
+  const mapped = [];
+  for (const row of rows) {
+    let sName = row.senderName;
+    let sRole = row.senderRole;
+    if (!sName || !sRole) {
+      const user = await getUser(row.userId);
+      if (user) {
+        sName = user.displayName;
+        sRole = user.role;
+      }
+    }
+    mapped.push({
+      id: String(row.id),
+      userId: row.userId,
+      senderId: row.userId,
+      userEmail: row.userEmail,
+      senderName: sName || row.userEmail?.split('@')[0] || 'Staff Member',
+      senderRole: sRole || 'agent',
+      text: row.text,
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
+    });
+  }
+  return mapped;
 }
 
 // --- STAFF DMs ---
 export async function saveStaffDM(dm: any): Promise<void> {
+  const sId = dm.senderId || 'anonymous';
+  let sEmail = dm.senderEmail;
+  if (!sEmail && sId !== 'anonymous') {
+    const user = await getUser(sId);
+    sEmail = user?.email;
+  }
+  if (!sEmail) {
+    sEmail = `${sId}@ahh-management.com`;
+  }
+
+  const rId = dm.recipientId || 'anonymous';
+  let rEmail = dm.recipientEmail;
+  if (!rEmail && rId !== 'anonymous') {
+    const user = await getUser(rId);
+    rEmail = user?.email;
+  }
+  if (!rEmail) {
+    rEmail = `${rId}@ahh-management.com`;
+  }
+
   await query(`
     INSERT INTO staff_dms (senderId, senderEmail, recipientId, recipientEmail, text)
     VALUES (?, ?, ?, ?, ?)
-  `, [dm.senderId, dm.senderEmail, dm.recipientId, dm.recipientEmail, dm.text]);
+  `, [sId, sEmail, rId, rEmail, dm.text]);
 }
 
 export async function getAllStaffDMs(): Promise<any[]> {
   const rows = await query("SELECT * FROM staff_dms ORDER BY createdAt DESC LIMIT 200");
   rows.reverse();
-  return rows.map((row: any) => ({
-    id: String(row.id),
-    senderId: row.senderId,
-    senderEmail: row.senderEmail,
-    recipientId: row.recipientId,
-    recipientEmail: row.recipientEmail,
-    text: row.text,
-    createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
-  }));
+
+  const mapped = [];
+  for (const row of rows) {
+    let sName = row.senderName;
+    let sRole = row.senderRole;
+    if (!sName || !sRole) {
+      const user = await getUser(row.senderId);
+      if (user) {
+        sName = user.displayName;
+        sRole = user.role;
+      }
+    }
+    mapped.push({
+      id: String(row.id),
+      senderId: row.senderId,
+      senderEmail: row.senderEmail,
+      recipientId: row.recipientId,
+      recipientEmail: row.recipientEmail,
+      text: row.text,
+      channelId: [row.senderId, row.recipientId].sort().join('_'),
+      senderName: sName || row.senderEmail?.split('@')[0] || 'Staff Member',
+      senderRole: sRole || 'agent',
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
+    });
+  }
+  return mapped;
 }

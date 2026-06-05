@@ -48,6 +48,10 @@ export default function NotificationCenter() {
   const dmsUnsubRef = useRef<(() => void) | null>(null);
   const ticketsUnsubRef = useRef<(() => void) | null>(null);
 
+  // Caches to prevent duplicate notifications from resubscriptions or transient write updates
+  const processedDmsRef = useRef<Set<string>>(new Set());
+  const processedTicketsRef = useRef<Map<string, { status: string; repliesCount: number; lastReplyId?: string }>>(new Map());
+
   // Synchronize history shifts to local storage
   const saveHistoryToStore = (newHistory: HistoryItem[]) => {
     try {
@@ -117,6 +121,7 @@ export default function NotificationCenter() {
         dmsUnsubRef.current = null;
       }
       isFirstDmsLoad.current = true;
+      processedDmsRef.current.clear();
       return;
     }
 
@@ -129,23 +134,32 @@ export default function NotificationCenter() {
     );
 
     const unsubscribe = onSnapshot(qDms, (snapshot) => {
+      let isInitial = false;
       if (isFirstDmsLoad.current) {
         isFirstDmsLoad.current = false;
-        return; // Ignore historical records on first paint
+        isInitial = true;
       }
 
       snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const docData = change.doc.data();
-          const isStaff = profile?.role && ['super_admin', 'admin', 'agent', 'maintenance', 'host', 'landlord'].includes(profile.role);
-          addToast(
-            `New Message`,
-            `Message from ${docData.senderName || 'Staff'}: "${docData.text || ''}"`,
-            'dm',
-            isStaff
-              ? `/admin?tab=staff_chat&chatUser=${docData.senderId}` // Staff members go straight to specific DM conversation in admin portal
-              : '/chat'  // Guests go to standard chat page
-          );
+        const docId = change.doc.id;
+        if (isInitial) {
+          processedDmsRef.current.add(docId);
+        } else {
+          if (change.type === 'added') {
+            if (!processedDmsRef.current.has(docId)) {
+              processedDmsRef.current.add(docId);
+              const docData = change.doc.data();
+              const isStaff = profile?.role && ['super_admin', 'admin', 'agent', 'maintenance', 'host', 'landlord'].includes(profile.role);
+              addToast(
+                `New Message`,
+                `Message from ${docData.senderName || 'Staff'}: "${docData.text || ''}"`,
+                'dm',
+                isStaff
+                  ? `/admin?tab=staff_chat&chatUser=${docData.senderId}` // Staff members go straight to specific DM conversation in admin portal
+                  : '/chat'  // Guests go to standard chat page
+              );
+            }
+          }
         }
       });
     }, (error) => {
@@ -170,6 +184,7 @@ export default function NotificationCenter() {
         ticketsUnsubRef.current = null;
       }
       isFirstTicketsLoad.current = true;
+      processedTicketsRef.current.clear();
       return;
     }
 
@@ -182,46 +197,76 @@ export default function NotificationCenter() {
       : query(collection(db, 'tickets'), where('userId', '==', user.uid));
 
     const unsubscribe = onSnapshot(qTickets, (snapshot) => {
+      let isInitial = false;
       if (isFirstTicketsLoad.current) {
         isFirstTicketsLoad.current = false;
-        return; // Ignore historical records on first load
+        isInitial = true;
       }
 
       snapshot.docChanges().forEach((change) => {
+        const docId = change.doc.id;
         const docData = change.doc.data();
-        
-        if (change.type === 'added') {
-          // Do not toast if the current user added the ticket themselves
-          if (docData.userId !== user.uid) {
-            addToast(
-              `New Service Ticket`,
-              `Room alert: "${docData.title}" - Category: ${String(docData.category).toUpperCase()}`,
-              'ticket',
-              isPrivileged ? `/admin?tab=support&ticketId=${change.doc.id}` : `/profile?tab=support&ticketId=${change.doc.id}`
-            );
-          }
-        } else if (change.type === 'modified') {
-          // Check if replies array is updated!
-          const replies = docData.replies || [];
-          if (replies.length > 0) {
-            const lastReply = replies[replies.length - 1];
-            // If the last reply is not by the current user, toast it!
-            if (lastReply.senderId !== user.uid) {
+        const replies = docData.replies || [];
+        const status = docData.status || 'open';
+        const lastReply = replies[replies.length - 1];
+        const lastReplyId = lastReply ? (lastReply.id || `${lastReply.senderId}_${lastReply.createdAt?.seconds || lastReply.timestamp || 0}`) : undefined;
+
+        if (isInitial) {
+          processedTicketsRef.current.set(docId, {
+            status,
+            repliesCount: replies.length,
+            lastReplyId
+          });
+        } else {
+          const oldState = processedTicketsRef.current.get(docId);
+
+          if (change.type === 'added') {
+            if (!oldState) {
+              processedTicketsRef.current.set(docId, {
+                status,
+                repliesCount: replies.length,
+                lastReplyId
+              });
+
+              // Do not toast if the current user added the ticket themselves
+              if (docData.userId !== user.uid) {
+                addToast(
+                  `New Service Ticket`,
+                  `Room alert: "${docData.title || docData.description || 'No Title'}" - Category: ${String(docData.category || 'Maintenance').toUpperCase()}`,
+                  'ticket',
+                  isPrivileged ? `/admin?tab=support&ticketId=${docId}` : `/profile?tab=support&ticketId=${docId}`
+                );
+              }
+            }
+          } else if (change.type === 'modified') {
+            const replyCountIncreased = !oldState || replies.length > oldState.repliesCount || (lastReplyId && lastReplyId !== oldState.lastReplyId);
+            const statusChanged = !oldState || status !== oldState.status;
+
+            processedTicketsRef.current.set(docId, {
+              status,
+              repliesCount: replies.length,
+              lastReplyId
+            });
+
+            if (replyCountIncreased && lastReply) {
+              // If the last reply is not by the current user, toast it!
+              if (lastReply.senderId !== user.uid) {
+                addToast(
+                  `Support Ticket Reply`,
+                  `Reply from ${lastReply.senderName || 'Staff'}: "${lastReply.message || lastReply.text || ''}"`,
+                  'reply',
+                  isPrivileged ? `/admin?tab=support&ticketId=${docId}` : `/profile?tab=support&ticketId=${docId}`
+                );
+              }
+            } else if (statusChanged) {
+              // General ticket update (status update, etc.)
               addToast(
-                `Support Ticket Reply`,
-                `Reply from ${lastReply.senderName || 'Staff'}: "${lastReply.message}"`,
-                'reply',
-                 isPrivileged ? `/admin?tab=support&ticketId=${change.doc.id}` : `/profile?tab=support&ticketId=${change.doc.id}`
+                `Ticket Status Shifted`,
+                `"${docData.title || docData.description || 'No Title'}" updated to status [${String(status).replace('_', ' ').toUpperCase()}]`,
+                'ticket',
+                isPrivileged ? `/admin?tab=support&ticketId=${docId}` : `/profile?tab=support&ticketId=${docId}`
               );
             }
-          } else {
-            // General ticket update (status update, etc.)
-            addToast(
-              `Ticket Status Shifted`,
-              `"${docData.title}" updated to status [${String(docData.status).replace('_', ' ').toUpperCase()}]`,
-              'ticket',
-              isPrivileged ? `/admin?tab=support&ticketId=${change.doc.id}` : `/profile?tab=support&ticketId=${change.doc.id}`
-            );
           }
         }
       });
