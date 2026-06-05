@@ -176,8 +176,8 @@ export default function StaffChat() {
 
       // Sort client-side by timestamp to avoid requiring composite indexes
       list.sort((a,b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
+        const timeA = a.createdAt?.seconds || (Date.now() / 1000 + 3600);
+        const timeB = b.createdAt?.seconds || (Date.now() / 1000 + 3600);
         return timeA - timeB;
       });
 

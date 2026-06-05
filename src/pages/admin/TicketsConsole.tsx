@@ -435,7 +435,7 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
                     t.status === 'resolved'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400'
                       : t.status === 'in_progress'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-955/20 dark:text-amber-400'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400'
                       : 'bg-zinc-100 text-zinc-650 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-350'
                   }`}>
                     {t.status}
@@ -603,7 +603,7 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
                 <div className="p-4 sm:p-5 bg-zinc-50 dark:bg-zinc-950/50 rounded-2xl border border-zinc-150 dark:border-zinc-850">
                   <div className="flex items-center justify-between text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
                     <span className="flex items-center gap-1.5"><ClipboardList size={11} /> Base Issue Description</span>
-                    <span className="font-mono text-[9px]">LODGED BY {selectedTicket.userName.toUpperCase()}</span>
+                    <span className="font-mono text-[9px]">LODGED BY {(selectedTicket.userName || 'Guest').toUpperCase()}</span>
                   </div>
                   <p className="text-xs text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed whitespace-pre-wrap">
                     {selectedTicket.description}
