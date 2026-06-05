@@ -7,6 +7,7 @@ import { AdminBooking, BookingFiltersState } from './types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, X, Eye, Phone, Calendar, AlertCircle, Sparkles, Ban } from 'lucide-react';
 import CurrencySymbol from '../../../components/CurrencySymbol';
+import Pagination from '../../../components/Pagination';
 
 // Modular files imports
 import BookingsFilters from './BookingsFilters';
@@ -466,51 +467,14 @@ export default function BookingConsole({ properties, onRefreshStats }: BookingCo
                 </div>
               )}
 
-              {/* Elegant Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 mt-4 border border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30 rounded-2xl">
-                  <span className="text-[11px] text-zinc-500 font-medium font-sans uppercase tracking-wider">
-                    Showing <strong className="text-zinc-800 dark:text-zinc-200">{startIndex + 1}</strong> to{" "}
-                    <strong className="text-zinc-800 dark:text-zinc-200">
-                      {Math.min(startIndex + itemsPerPage, filteredBookings.length)}
-                    </strong>{" "}
-                    of <strong className="text-zinc-800 dark:text-zinc-200">{filteredBookings.length}</strong> active reservations
-                  </span>
-                  
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
-                    >
-                      Prev
-                    </button>
-                    {Array.from({ length: totalPages }).map((_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setCurrentPage(i + 1)}
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all cursor-pointer ${
-                          currentPage === i + 1
-                            ? "bg-brand text-white shadow-sm"
-                            : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Elegant Universal Pagination Controls */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredBookings.length}
+                itemsPerPage={itemsPerPage}
+              />
             </div>
           )}
         </>

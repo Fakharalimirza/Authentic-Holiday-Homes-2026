@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { UnitItem, BuildingItem, LandlordItem } from '../types';
 import { useGlobalSettings } from '../../../contexts/GlobalSettingsContext';
+import Pagination from '../../../components/Pagination';
 
 // Import newly refactored subcomponents
 import UnitsFilterBar from './UnitsFilterBar';
@@ -35,6 +36,12 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = viewMode === 'grid' ? 9 : 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [viewMode, searchQuery, statusFilter]);
 
   // Form & modals states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -120,6 +127,10 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
     if (statusFilter === 'ALL') return matchesSearch;
     return matchesSearch && unit.status.toUpperCase() === statusFilter;
   });
+
+  const totalPages = Math.ceil(filteredUnits.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedUnits = filteredUnits.slice(startIndex, startIndex + itemsPerPage);
 
   // Soft Delete Handler
   const handleDeleteConfirm = async () => {
@@ -438,26 +449,36 @@ export default function UnitsConsole({ onCreateListing }: UnitsConsoleProps) {
           </p>
         </div>
       ) : (
-        viewMode === 'grid' ? (
-          <UnitsGridView
-            units={filteredUnits}
-            buildings={buildings}
-            landlords={landlords}
-            onCreateListing={onCreateListing}
-            onViewDetails={setViewingUnitDetails}
-            onEdit={handleOpenEdit}
-            onDelete={setUnitToDelete}
+        <div className="space-y-4">
+          {viewMode === 'grid' ? (
+            <UnitsGridView
+              units={paginatedUnits}
+              buildings={buildings}
+              landlords={landlords}
+              onCreateListing={onCreateListing}
+              onViewDetails={setViewingUnitDetails}
+              onEdit={handleOpenEdit}
+              onDelete={setUnitToDelete}
+            />
+          ) : (
+            <UnitsListView
+              units={paginatedUnits}
+              buildings={buildings}
+              landlords={landlords}
+              onViewDetails={setViewingUnitDetails}
+              onEdit={handleOpenEdit}
+              onDelete={setUnitToDelete}
+            />
+          )}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredUnits.length}
+            itemsPerPage={itemsPerPage}
           />
-        ) : (
-          <UnitsListView
-            units={filteredUnits}
-            buildings={buildings}
-            landlords={landlords}
-            onViewDetails={setViewingUnitDetails}
-            onEdit={handleOpenEdit}
-            onDelete={setUnitToDelete}
-          />
-        )
+        </div>
       )}
 
       {/* FORM MODAL */}

@@ -12,6 +12,7 @@ import LandlordDetailsModal from './LandlordDetailsModal';
 import LandlordsGridView from './LandlordsGridView';
 import LandlordsListView from './LandlordsListView';
 import LandlordFormModal from './LandlordFormModal';
+import Pagination from '../../../components/Pagination';
 
 export default function LandlordsConsole() {
   const { user, profile } = useAuth();
@@ -19,6 +20,12 @@ export default function LandlordsConsole() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = viewMode === 'grid' ? 9 : 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [viewMode, searchQuery]);
 
   // Modal & form states
   const [showFormModal, setShowFormModal] = useState(false);
@@ -406,6 +413,10 @@ export default function LandlordsConsole() {
     (land.phone && land.phone.includes(searchQuery))
   );
 
+  const totalPages = Math.ceil(filteredLandlords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLandlords = filteredLandlords.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-6">
       {/* Header and Controls */}
@@ -509,23 +520,33 @@ export default function LandlordsConsole() {
           </p>
         </div>
       ) : (
-        viewMode === 'grid' ? (
-          <LandlordsGridView
-            landlords={filteredLandlords}
-            onViewDetails={setShowDetailModal}
-            onEdit={handleOpenEdit}
-            onDelete={handleDelete}
-            getSecureDocViewUrl={getSecureDocViewUrl}
+        <div className="space-y-4">
+          {viewMode === 'grid' ? (
+            <LandlordsGridView
+              landlords={paginatedLandlords}
+              onViewDetails={setShowDetailModal}
+              onEdit={handleOpenEdit}
+              onDelete={handleDelete}
+              getSecureDocViewUrl={getSecureDocViewUrl}
+            />
+          ) : (
+            <LandlordsListView
+              landlords={paginatedLandlords}
+              onViewDetails={setShowDetailModal}
+              onEdit={handleOpenEdit}
+              onDelete={handleDelete}
+              getSecureDocViewUrl={getSecureDocViewUrl}
+            />
+          )}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredLandlords.length}
+            itemsPerPage={itemsPerPage}
           />
-        ) : (
-          <LandlordsListView
-            landlords={filteredLandlords}
-            onViewDetails={setShowDetailModal}
-            onEdit={handleOpenEdit}
-            onDelete={handleDelete}
-            getSecureDocViewUrl={getSecureDocViewUrl}
-          />
-        )
+        </div>
       )}
 
       {/* DETAILS VIEW MODAL */}

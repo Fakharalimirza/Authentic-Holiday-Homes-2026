@@ -172,7 +172,10 @@ export default function PaymentsConsole({ userUid, userRole, userName, userNameE
     }
   };
 
-  const getPaymentStatusStyle = (status: string) => {
+  const getPaymentStatusStyle = (status?: string) => {
+    if (!status) {
+      return 'bg-zinc-150 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200';
+    }
     switch (status) {
       case 'paid':
         return 'bg-green-100 text-green-800 dark:bg-green-950/20 dark:text-green-400 border border-green-220';
@@ -414,8 +417,8 @@ export default function PaymentsConsole({ userUid, userRole, userName, userNameE
                       AED {Number(b.totalPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-4 pr-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${getPaymentStatusStyle(b.paymentStatus)}`}>
-                        {b.paymentStatus.replace('_', ' ')}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${getPaymentStatusStyle(b.paymentStatus || 'unpaid')}`}>
+                        {(b.paymentStatus || 'unpaid').replace('_', ' ')}
                       </span>
                     </td>
                     <td className="py-4 text-right">
@@ -529,8 +532,8 @@ export default function PaymentsConsole({ userUid, userRole, userName, userNameE
                 </div>
 
                 <div className="text-right">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getPaymentStatusStyle(selectedBooking.paymentStatus)}`}>
-                    {selectedBooking.paymentStatus.replace('_', ' ')}
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getPaymentStatusStyle(selectedBooking.paymentStatus || 'unpaid')}`}>
+                    {(selectedBooking.paymentStatus || 'unpaid').replace('_', ' ')}
                   </span>
                 </div>
               </div>
@@ -632,10 +635,10 @@ export default function PaymentsConsole({ userUid, userRole, userName, userNameE
                       <button
                         key={pStat}
                         type="button"
-                        disabled={updatingPaymentId !== null || selectedBooking.paymentStatus === pStat}
+                        disabled={updatingPaymentId !== null || (selectedBooking.paymentStatus || 'unpaid') === pStat}
                         onClick={() => handleUpdatePaymentStatus(selectedBooking.id, pStat)}
                         className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                          selectedBooking.paymentStatus === pStat
+                          (selectedBooking.paymentStatus || 'unpaid') === pStat
                             ? 'bg-brand text-white shadow-sm'
                             : 'bg-white hover:bg-zinc-100 border border-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:border-zinc-800 text-zinc-500'
                         }`}

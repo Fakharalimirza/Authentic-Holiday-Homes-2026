@@ -61,6 +61,15 @@ export function initSocketServer(httpServer: HTTPServer) {
       }
     });
 
+    // Realtime connection self-test handler (restricted to admins/staff typically but safe for all socket test)
+    socket.on("realtime_test_ping", (data: any) => {
+      socket.emit("realtime_test_pong", {
+        timestamp: Date.now(),
+        clientTimestamp: data?.timestamp,
+        transport: socket.conn.transport.name
+      });
+    });
+
     socket.on("disconnect", () => {
       console.log(`[Socket.io] Socket session complete: ${socket.id}`);
     });

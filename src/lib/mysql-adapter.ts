@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { getAuth, onAuthStateChanged } from "./firebase";
 
 // Initialize global Socket.io client instance
-const socket = io({
+export const socket = io({
   transports: ["websocket", "polling"]
 });
 
@@ -146,25 +146,27 @@ function parseTimestamps(obj: any): any {
   }
   const res: any = {};
   for (const [key, val] of Object.entries(obj)) {
-    if (val && typeof val === 'string' && (
-      key.toLowerCase().includes('date') || 
-      key.toLowerCase().includes('time') || 
-      key.toLowerCase().includes('created') || 
-      key.toLowerCase().includes('updated') || 
-      key.toLowerCase().includes('checkin') || 
-      key.toLowerCase().includes('checkout') || 
-      key.toLowerCase().includes('timestamp') ||
-      (val.includes('T') && val.endsWith('Z'))
-    )) {
-      const parsed = Date.parse(val);
-      if (!isNaN(parsed)) {
-        res[key] = {
-          seconds: Math.floor(parsed / 1000),
-          nanoseconds: 0,
-          toDate: () => new Date(parsed),
-          toString: () => val
-        };
-        continue;
+    if (val && typeof val === 'string') {
+      const lowerKey = key.toLowerCase();
+      // Only convert fields to simulated Firestore Timestamp if they are explicit timestamp fields:
+      // - Contains 'created' or 'updated' (typically createdAt, updatedAt)
+      // - Contains 'timestamp'
+      // - Or is an explicit high-resolution ISO date-time string containing 'T' and ending in 'Z'
+      // BUT do NOT convert simple date-only strings (like check-in check-out ranges "YYYY-MM-DD")
+      const isTimestampKey = lowerKey.includes('created') || lowerKey.includes('updated') || lowerKey.includes('timestamp');
+      const isIsoString = val.includes('T') && val.endsWith('Z');
+      
+      if ((isTimestampKey || isIsoString) && !lowerKey.includes('checkin') && !lowerKey.includes('checkout') && val.length > 10) {
+        const parsed = Date.parse(val);
+        if (!isNaN(parsed)) {
+          res[key] = {
+            seconds: Math.floor(parsed / 1000),
+            nanoseconds: 0,
+            toDate: () => new Date(parsed),
+            toString: () => val
+          };
+          continue;
+        }
       }
     }
     if (val && typeof val === 'object') {

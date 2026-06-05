@@ -434,6 +434,42 @@ function AuthModalContainer() {
   );
 }
 
+function AppContent() {
+  const { user, profile } = useAuth();
+  const { pathname } = useLocation();
+
+  const hideFooter = pathname.startsWith('/admin') || pathname === '/admin';
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-300">
+      <Navbar />
+      <AuthModalContainer />
+      <AnnouncementPopup />
+      <main className="pt-16">
+        <React.Suspense fallback={<PageLoading />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/properties" element={<Properties />} />
+            <Route path="/property/:id" element={<PropertyDetails />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/list-your-property" element={<ListProperty />} />
+            <Route path="/wishlist" element={<Profile defaultTab="wishlist" />} />
+            <Route path="/booking/:id" element={<Booking />} />
+            <Route path="/accept-invite" element={<AcceptInvite />} />
+          </Routes>
+        </React.Suspense>
+      </main>
+      {!hideFooter && <Footer />}
+    </div>
+  );
+}
+
 function AppWrapper() {
   const { lang } = useSettings();
 
@@ -447,32 +483,7 @@ function AppWrapper() {
       <GlobalSettingsProvider>
         <Router>
           <ScrollToTop />
-          <div className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-300">
-            <Navbar />
-            <AuthModalContainer />
-            <AnnouncementPopup />
-            <main className="pt-16">
-              <React.Suspense fallback={<PageLoading />}>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/properties" element={<Properties />} />
-                  <Route path="/property/:id" element={<PropertyDetails />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/chat" element={<Chat />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/list-your-property" element={<ListProperty />} />
-                  <Route path="/wishlist" element={<Profile defaultTab="wishlist" />} />
-                  <Route path="/booking/:id" element={<Booking />} />
-                  <Route path="/accept-invite" element={<AcceptInvite />} />
-                </Routes>
-              </React.Suspense>
-            </main>
-            <Footer />
-          </div>
+          <AppContent />
         </Router>
       </GlobalSettingsProvider>
     </AuthProvider>

@@ -23,6 +23,7 @@ import BuildingDetailsModal from './BuildingDetailsModal';
 import BuildingsGridView from './BuildingsGridView';
 import BuildingsListView from './BuildingsListView';
 import BuildingFormModal from './BuildingFormModal';
+import Pagination from '../../../components/Pagination';
 
 export default function BuildingsConsole() {
   const { user } = useAuth();
@@ -31,6 +32,12 @@ export default function BuildingsConsole() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = viewMode === 'grid' ? 9 : 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [viewMode, searchQuery]);
   
   // Modals & Detail panels
   const [showFormModal, setShowFormModal] = useState(false);
@@ -456,6 +463,10 @@ export default function BuildingsConsole() {
     (bld.city && bld.city.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBuildings = filteredBuildings.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-6">
       {/* Header Controls */}
@@ -720,21 +731,31 @@ export default function BuildingsConsole() {
           </p>
         </div>
       ) : (
-        viewMode === 'grid' ? (
-          <BuildingsGridView
-            buildings={filteredBuildings}
-            onViewDetails={setShowDetailModal}
-            onEdit={handleOpenEdit}
-            onDelete={handleDelete}
+        <div className="space-y-4">
+          {viewMode === 'grid' ? (
+            <BuildingsGridView
+              buildings={paginatedBuildings}
+              onViewDetails={setShowDetailModal}
+              onEdit={handleOpenEdit}
+              onDelete={handleDelete}
+            />
+          ) : (
+            <BuildingsListView
+              buildings={paginatedBuildings}
+              onViewDetails={setShowDetailModal}
+              onEdit={handleOpenEdit}
+              onDelete={handleDelete}
+            />
+          )}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredBuildings.length}
+            itemsPerPage={itemsPerPage}
           />
-        ) : (
-          <BuildingsListView
-            buildings={filteredBuildings}
-            onViewDetails={setShowDetailModal}
-            onEdit={handleOpenEdit}
-            onDelete={handleDelete}
-          />
-        )
+        </div>
       )}
 
       {/* FORM MODAL */}

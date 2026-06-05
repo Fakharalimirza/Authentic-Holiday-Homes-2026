@@ -112,22 +112,22 @@ export default function BookingDetailsModal({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-850">
               <span className="block text-[10px] uppercase font-black tracking-wider text-zinc-400 mb-1">Status</span>
-              <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase ${statusColors[booking.status] || 'bg-zinc-100 text-zinc-650'}`}>
-                {booking.status.replace('_', ' ')}
+              <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase ${statusColors[booking.status || 'pending'] || 'bg-zinc-100 text-zinc-650'}`}>
+                {(booking.status || 'pending').replace('_', ' ')}
               </span>
             </div>
             
             <div className="p-4 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-850">
               <span className="block text-[10px] uppercase font-black tracking-wider text-zinc-400 mb-1">Financial State</span>
-              <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase ${paymentStatusColors[booking.paymentStatus] || 'bg-zinc-100 text-zinc-650'}`}>
-                {booking.paymentStatus.replace('_', ' ')}
+              <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase ${paymentStatusColors[booking.paymentStatus || 'unpaid'] || 'bg-zinc-100 text-zinc-650'}`}>
+                {(booking.paymentStatus || 'unpaid').replace('_', ' ')}
               </span>
             </div>
 
             <div className="p-4 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-850">
               <span className="block text-[10px] uppercase font-black tracking-wider text-zinc-400 mb-1">Reservation Source</span>
               <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 block truncate">
-                {acquisitionLabels[booking.source] || booking.source.toUpperCase()}
+                {acquisitionLabels[booking.source] || (booking.source || 'Direct').toUpperCase()}
               </span>
             </div>
           </div>

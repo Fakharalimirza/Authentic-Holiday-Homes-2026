@@ -10,8 +10,12 @@ import {
   Terminal, 
   BookOpen, 
   AlertTriangle,
-  HardDrive
+  HardDrive,
+  Wifi,
+  WifiOff,
+  Activity
 } from 'lucide-react';
+import { socket } from '../../lib/mysql-adapter';
 
 interface DbStatus {
   active: boolean;
@@ -31,6 +35,49 @@ export default function DatabaseConsole() {
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Realtime diagnostic test states
+  const [socketStatus, setSocketStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
+  const [socketLatency, setSocketLatency] = useState<number | null>(null);
+  const [socketTransport, setSocketTransport] = useState<string | null>(null);
+  const [socketTimestamp, setSocketTimestamp] = useState<string | null>(null);
+  const [socketError, setSocketError] = useState<string | null>(null);
+
+  const runRealtimeTest = () => {
+    setSocketStatus('testing');
+    setSocketError(null);
+    setSocketLatency(null);
+    setSocketTransport(null);
+    setSocketTimestamp(null);
+
+    const startTime = Date.now();
+    
+    // Set 5 seconds safety timeout
+    const timeoutId = setTimeout(() => {
+      socket.off("realtime_test_pong", handlePong);
+      setSocketStatus('failed');
+      setSocketError("Ping timed out. Socket server is unreachable or slow.");
+      console.error("[Socket.io Self Test] Error: Timeout. Socket response took longer than 5 seconds.");
+    }, 5000);
+
+    const handlePong = (payload: any) => {
+      clearTimeout(timeoutId);
+      const endTime = Date.now();
+      const diffEnd = endTime - startTime;
+      
+      setSocketLatency(diffEnd);
+      setSocketStatus('connected');
+      setSocketTransport(payload?.transport || 'websocket');
+      setSocketTimestamp(new Date().toLocaleTimeString());
+      setSocketError(null);
+      console.log(`[Socket.io Self Test] Success. Latency: ${diffEnd}ms. Transport: ${payload?.transport || 'unknown'}`);
+    };
+
+    socket.once("realtime_test_pong", handlePong);
+    
+    // Trigger emit over socket.io connection
+    socket.emit("realtime_test_ping", { timestamp: startTime });
+  };
 
   const fetchStatus = async () => {
     try {
@@ -214,6 +261,107 @@ export default function DatabaseConsole() {
                     <span>{process.env.VPS_FTP_SECURE === "true" ? "Yes (Secure)" : "No (Plain)"}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Socket.io Realtime Connection self-test */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6 shadow-sm space-y-5 md:col-span-2 text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-850">
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <Wifi size={15} className="text-brand animate-pulse" /> Socket.io Realtime Link Test
+                    </h3>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Check if bi-directional Socket.io WSS or polling connections are fully operational with the server.
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={runRealtimeTest}
+                    disabled={socketStatus === 'testing'}
+                    className="px-4 py-2.5 bg-brand hover:brightness-105 active:scale-[0.98] transition-all rounded-xl text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5 self-start sm:self-auto disabled:opacity-50 cursor-pointer shadow-md shadow-brand/10 shrink-0"
+                    style={{ backgroundColor: dbStatus?.config?.host ? undefined : '#4f46e5' }} // brand color fallback
+                  >
+                    <Activity size={14} className={socketStatus === 'testing' ? 'animate-pulse' : ''} />
+                    {socketStatus === 'testing' ? 'Pinging Gateway...' : 'Run Realtime Ping Test'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  {/* Status Box */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 p-4 rounded-2xl flex flex-col justify-between space-y-2">
+                    <span className="text-[9px] uppercase font-black text-zinc-400 tracking-wider">Connection State</span>
+                    <div className="flex items-center gap-1.5">
+                      {socketStatus === 'idle' && (
+                        <span className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-extrabold text-[10px] uppercase tracking-widest rounded-full">
+                          Not Tested
+                        </span>
+                      )}
+                      {socketStatus === 'testing' && (
+                        <span className="px-2.5 py-1 bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 font-extrabold text-[10px] uppercase tracking-widest rounded-full flex items-center gap-1.5 animate-pulse">
+                          <span className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-ping" />
+                          Testing...
+                        </span>
+                      )}
+                      {socketStatus === 'connected' && (
+                        <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-extrabold text-[10px] uppercase tracking-widest rounded-full flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                          Connected
+                        </span>
+                      )}
+                      {socketStatus === 'failed' && (
+                        <span className="px-2.5 py-1 bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-450 border border-rose-200 dark:border-rose-900 font-extrabold text-[10px] uppercase tracking-widest rounded-full flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
+                          Failed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Latency Box */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 p-4 rounded-2xl flex flex-col justify-between space-y-2">
+                    <span className="text-[9px] uppercase font-black text-zinc-400 tracking-wider">Channel Latency</span>
+                    <span className={`text-base font-black tracking-tight ${
+                      socketLatency === null 
+                        ? 'text-zinc-450' 
+                        : socketLatency < 50 
+                          ? 'text-emerald-600 dark:text-emerald-400' 
+                          : socketLatency < 150 
+                            ? 'text-amber-500 dark:text-amber-400' 
+                            : 'text-rose-500 dark:text-rose-400'
+                    }`}>
+                      {socketLatency !== null ? `${socketLatency} ms` : '—'}
+                      {socketLatency !== null && (
+                        <span className="block text-[8px] font-medium tracking-normal text-zinc-405 mt-0.5 uppercase">
+                          {socketLatency < 50 ? 'Excellent (WSS Speed)' : socketLatency < 150 ? 'Standard Route' : 'Congested Link'}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Transport Box */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 p-4 rounded-2xl flex flex-col justify-between space-y-2">
+                    <span className="text-[9px] uppercase font-black text-zinc-400 tracking-wider">Transport Engine</span>
+                    <span className="text-xs font-black uppercase text-zinc-800 dark:text-zinc-200 font-mono tracking-wider">
+                      {socketTransport ? socketTransport : 'None'}
+                    </span>
+                  </div>
+
+                  {/* Synced Box */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 p-4 rounded-2xl flex flex-col justify-between space-y-2">
+                    <span className="text-[9px] uppercase font-black text-zinc-400 tracking-wider">Test Completed At</span>
+                    <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 font-mono">
+                      {socketTimestamp ? socketTimestamp : 'Not Run'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Error Banner inside diagnostics block */}
+                {socketError && (
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-150 dark:border-rose-900/55 rounded-xl flex items-center gap-2 text-[10px] text-rose-700 dark:text-rose-400 font-mono">
+                    <WifiOff size={13} className="shrink-0" />
+                    <strong>Link Failed:</strong> {socketError}
+                  </div>
+                )}
               </div>
 
             </div>

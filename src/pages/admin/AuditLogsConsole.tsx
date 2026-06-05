@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../lib/firebase';
 import { Clipboard, ShieldCheck, Search, Filter, RefreshCw, Calendar, Globe, Monitor, User, Loader2 } from 'lucide-react';
+import Pagination from '../../components/Pagination';
 
 interface AuditLog {
   id: string;
@@ -246,50 +247,14 @@ export default function AuditLogsConsole() {
             </table>
           </div>
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-              <span className="text-[10px] sm:text-xs text-zinc-500 font-medium font-sans uppercase tracking-wider">
-                Showing <strong className="text-zinc-800 dark:text-zinc-200">{startIndex + 1}</strong> to{" "}
-                <strong className="text-zinc-800 dark:text-zinc-200">
-                  {Math.min(startIndex + itemsPerPage, filteredLogs.length)}
-                </strong>{" "}
-                of <strong className="text-zinc-800 dark:text-zinc-200">{filteredLogs.length}</strong> Audit Logs
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] uppercase font-bold tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
-                >
-                  Prev
-                </button>
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer ${
-                      currentPage === i + 1
-                        ? "bg-brand text-white font-black"
-                        : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] uppercase font-bold tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Elegant Universal Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredLogs.length}
+            itemsPerPage={itemsPerPage}
+          />
         </div>
       )}
 

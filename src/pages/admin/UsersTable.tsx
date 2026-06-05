@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Shield, User, Landmark, Briefcase, Wrench, Search, Crown, Check, AlertCircle, Trash2 } from 'lucide-react';
+import Pagination from '../../components/Pagination';
 
 interface UserProfile {
   uid: string;
@@ -255,51 +256,14 @@ export default function UsersTable({ currentRole }: UsersTableProps) {
           </div>
         )}
 
-        {/* Elegant Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 mt-4 border border-zinc-100 dark:border-zinc-805 bg-zinc-50/40 dark:bg-zinc-900/40 rounded-2xl">
-            <span className="text-[11px] text-zinc-500 font-medium font-sans uppercase tracking-wider">
-              Showing <strong className="text-zinc-800 dark:text-zinc-200">{startIndex + 1}</strong> to{" "}
-              <strong className="text-zinc-800 dark:text-zinc-200">
-                {Math.min(startIndex + itemsPerPage, filteredUsers.length)}
-              </strong>{" "}
-              of <strong className="text-zinc-800 dark:text-zinc-200">{filteredUsers.length}</strong> registered users
-            </span>
-            
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all cursor-pointer ${
-                    currentPage === i + 1
-                      ? "bg-brand text-white shadow-sm"
-                      : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Elegant Universal Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredUsers.length}
+          itemsPerPage={itemsPerPage}
+        />
       </div>
     </div>
   );

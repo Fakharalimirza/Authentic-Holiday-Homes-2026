@@ -149,15 +149,25 @@ export default function NotificationCenter() {
             if (!processedDmsRef.current.has(docId)) {
               processedDmsRef.current.add(docId);
               const docData = change.doc.data();
-              const isStaff = profile?.role && ['super_admin', 'admin', 'agent', 'maintenance', 'host', 'landlord'].includes(profile.role);
-              addToast(
-                `New Message`,
-                `Message from ${docData.senderName || 'Staff'}: "${docData.text || ''}"`,
-                'dm',
-                isStaff
-                  ? `/admin?tab=staff_chat&chatUser=${docData.senderId}` // Staff members go straight to specific DM conversation in admin portal
-                  : '/chat'  // Guests go to standard chat page
-              );
+              
+              // Only toast if it is a truly recent document addition
+              const createdAt = docData.createdAt;
+              const createdMs = createdAt?.seconds 
+                ? createdAt.seconds * 1000 
+                : (createdAt?.toDate ? createdAt.toDate().getTime() : (typeof createdAt === 'string' ? Date.parse(createdAt) : Date.now()));
+              const isRecent = !createdAt || (Date.now() - createdMs < 45000); // 45 seconds
+
+              if (isRecent) {
+                const isStaff = profile?.role && ['super_admin', 'admin', 'agent', 'maintenance', 'host', 'landlord'].includes(profile.role);
+                addToast(
+                  `New Message`,
+                  `Message from ${docData.senderName || 'Staff'}: "${docData.text || ''}"`,
+                  'dm',
+                  isStaff
+                    ? `/admin?tab=staff_chat&chatUser=${docData.senderId}` // Staff members go straight to specific DM conversation in admin portal
+                    : '/chat'  // Guests go to standard chat page
+                );
+              }
             }
           }
         }
@@ -228,8 +238,15 @@ export default function NotificationCenter() {
                 lastReplyId
               });
 
-              // Do not toast if the current user added the ticket themselves
-              if (docData.userId !== user.uid) {
+              // Check if the ticket creation event is truly recent
+              const createdAt = docData.createdAt;
+              const createdMs = createdAt?.seconds 
+                ? createdAt.seconds * 1000 
+                : (createdAt?.toDate ? createdAt.toDate().getTime() : (typeof createdAt === 'string' ? Date.parse(createdAt) : Date.now()));
+              const isRecentTicket = !createdAt || (Date.now() - createdMs < 45000); // 45 seconds
+
+              // Do not toast if the current user added the ticket themselves or if it's old historical data
+              if (isRecentTicket && docData.userId !== user.uid) {
                 addToast(
                   `New Service Ticket`,
                   `Room alert: "${docData.title || docData.description || 'No Title'}" - Category: ${String(docData.category || 'Maintenance').toUpperCase()}`,
@@ -249,8 +266,12 @@ export default function NotificationCenter() {
             });
 
             if (replyCountIncreased && lastReply) {
-              // If the last reply is not by the current user, toast it!
-              if (lastReply.senderId !== user.uid) {
+              // Parse the last reply creation timestamp to verify recency
+              const lastReplyTime = lastReply.createdAt ? new Date(lastReply.createdAt).getTime() : Date.now();
+              const isRecentReply = Date.now() - lastReplyTime < 45000; // 45 seconds
+
+              // If the last reply is not by the current user and is recent, toast it!
+              if (isRecentReply && lastReply.senderId !== user.uid) {
                 addToast(
                   `Support Ticket Reply`,
                   `Reply from ${lastReply.senderName || 'Staff'}: "${lastReply.message || lastReply.text || ''}"`,
@@ -259,13 +280,20 @@ export default function NotificationCenter() {
                 );
               }
             } else if (statusChanged) {
-              // General ticket update (status update, etc.)
-              addToast(
-                `Ticket Status Shifted`,
-                `"${docData.title || docData.description || 'No Title'}" updated to status [${String(status).replace('_', ' ').toUpperCase()}]`,
-                'ticket',
-                isPrivileged ? `/admin?tab=support&ticketId=${docId}` : `/profile?tab=support&ticketId=${docId}`
-              );
+              // For status changes (which always append a system status message), we check if the last log is extremely recent.
+              // To prevent historical status notifications, we verify both oldState was loaded in session, and the last update timestamp is recent.
+              const lastReplyTime = lastReply?.createdAt ? new Date(lastReply.createdAt).getTime() : Date.now();
+              const isRecentStatusChange = oldState ? (lastReply ? (Date.now() - lastReplyTime < 45000) : true) : false;
+
+              if (isRecentStatusChange) {
+                // General ticket update (status update, etc.)
+                addToast(
+                  `Ticket Status Shifted`,
+                  `"${docData.title || docData.description || 'No Title'}" updated to status [${String(status).replace('_', ' ').toUpperCase()}]`,
+                  'ticket',
+                  isPrivileged ? `/admin?tab=support&ticketId=${docId}` : `/profile?tab=support&ticketId=${docId}`
+                );
+              }
             }
           }
         }

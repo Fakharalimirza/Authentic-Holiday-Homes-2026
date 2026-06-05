@@ -6,7 +6,8 @@ import {
   MessageSquare, Plus, CheckCircle2, RefreshCw, X, Calendar, User, 
   ClipboardList, PlusCircle, AlertCircle, Send, ArrowRight, ShieldAlert,
   Clock, CheckSquare, MessageCircle, Home
-} from 'lucide-react';
+ } from 'lucide-react';
+import Pagination from '../../components/Pagination';
 
 export interface TicketReply {
   id: string;
@@ -477,46 +478,14 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
               </div>
             )}
 
-            {/* Pagination controls for tickets list */}
-            {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-850 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider text-center sm:text-left">
-                  {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredTickets.length)} of {filteredTickets.length}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[9px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-805 disabled:opacity-45 transition-all cursor-pointer"
-                  >
-                    Prev
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`w-5.5 h-5.5 rounded-md flex items-center justify-center text-[9px] font-extrabold transition-all cursor-pointer ${
-                        currentPage === i + 1
-                          ? "bg-brand text-white"
-                          : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[9px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-805 disabled:opacity-45 transition-all cursor-pointer"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Elegant Universal Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredTickets.length}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
 
         </div>
