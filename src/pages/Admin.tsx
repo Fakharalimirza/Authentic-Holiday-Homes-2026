@@ -41,7 +41,8 @@ import {
   Upload,
   FileSpreadsheet,
   Loader2,
-  Info
+  Info,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -70,6 +71,7 @@ import DatabaseConsole from './admin/DatabaseConsole';
 import LandlordsConsole from './admin/LandlordsConsole';
 import BuildingsConsole from './admin/BuildingsConsole';
 import UnitsConsole from './admin/UnitsConsole';
+import TemplatesConsole from './admin/TemplatesConsole';
 
 export default function Admin() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -144,6 +146,7 @@ export default function Admin() {
       list.push({ id: 'invitations', label: 'Invitations Roster', icon: UserPlus, category: 'Access Administration' });
       list.push({ id: 'audit_logs', label: 'Staff Audit Trail', icon: History, category: 'System Maintenance' });
       list.push({ id: 'database', label: 'cPanel DB Service', icon: Database, category: 'System Maintenance' });
+      list.push({ id: 'email_templates', label: 'Email Templates', icon: Mail, category: 'System Maintenance' });
       list.push({ id: 'settings', label: 'Global Settings', icon: Settings, category: 'System Maintenance' });
     }
     
@@ -1708,6 +1711,11 @@ export default function Admin() {
               {/* TAB 12: CPANEL REMOTE DATABASE */}
               {activeTab === 'database' && (
                 <DatabaseConsole />
+              )}
+
+              {/* TAB 12.5: EMAIL TEMPLATES CONSOLE */}
+              {activeTab === 'email_templates' && (
+                <TemplatesConsole />
               )}
 
               {/* TAB 13: GLOBAL SETTINGS PANEL */}

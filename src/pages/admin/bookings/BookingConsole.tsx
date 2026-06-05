@@ -241,6 +241,17 @@ export default function BookingConsole({ properties, onRefreshStats }: BookingCo
     return true;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, bookings.length]);
+
+  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBookings = filteredBookings.slice(startIndex, startIndex + itemsPerPage);
+
   // Calculate duration in nights for grid display
   const calculateBookingNights = (inStr: string, outStr: string) => {
     const d1 = new Date(inStr);
@@ -320,7 +331,7 @@ export default function BookingConsole({ properties, onRefreshStats }: BookingCo
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBookings.map(b => {
+                  {paginatedBookings.map(b => {
                     const isManualBlock = b.guestName.includes('📅 BLOCKED DATES');
                     return (
                       <tr key={b.id} className={`bg-white dark:bg-zinc-900 group border border-zinc-100 ${
@@ -452,6 +463,52 @@ export default function BookingConsole({ properties, onRefreshStats }: BookingCo
               {filteredBookings.length === 0 && (
                 <div className="text-center py-20 text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-850 uppercase tracking-widest text-xs font-black">
                   No active guest itineraries match search parameters
+                </div>
+              )}
+
+              {/* Elegant Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 mt-4 border border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30 rounded-2xl">
+                  <span className="text-[11px] text-zinc-500 font-medium font-sans uppercase tracking-wider">
+                    Showing <strong className="text-zinc-800 dark:text-zinc-200">{startIndex + 1}</strong> to{" "}
+                    <strong className="text-zinc-800 dark:text-zinc-200">
+                      {Math.min(startIndex + itemsPerPage, filteredBookings.length)}
+                    </strong>{" "}
+                    of <strong className="text-zinc-800 dark:text-zinc-200">{filteredBookings.length}</strong> active reservations
+                  </span>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                    >
+                      Prev
+                    </button>
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setCurrentPage(i + 1)}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all cursor-pointer ${
+                          currentPage === i + 1
+                            ? "bg-brand text-white shadow-sm"
+                            : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

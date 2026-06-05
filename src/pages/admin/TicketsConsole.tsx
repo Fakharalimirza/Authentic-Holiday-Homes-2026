@@ -253,6 +253,17 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
     return t.status === statusFilter;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
+  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTickets = filteredTickets.slice(startIndex, startIndex + itemsPerPage);
+
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
 
   return (
@@ -404,7 +415,7 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
           </div>
 
           <div className="space-y-3.5">
-            {filteredTickets.map(t => (
+            {paginatedTickets.map(t => (
               <div
                 key={t.id}
                 onClick={() => setSelectedTicketId(t.id)}
@@ -424,7 +435,7 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
                     t.status === 'resolved'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400'
                       : t.status === 'in_progress'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-955/20 dark:text-amber-400'
                       : 'bg-zinc-100 text-zinc-650 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-350'
                   }`}>
                     {t.status}
@@ -462,7 +473,48 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
             {filteredTickets.length === 0 && (
               <div className="text-center py-16 bg-white dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
                 <ClipboardList className="mx-auto text-zinc-350 dark:text-zinc-700 mb-3" size={32} />
-                <p className="text-zinc-450 dark:text-zinc-400 text-xs font-bold uppercase tracking-widest">No matching support tickets</p>
+                <p className="text-zinc-455 dark:text-zinc-400 text-xs font-bold uppercase tracking-widest">No matching support tickets</p>
+              </div>
+            )}
+
+            {/* Pagination controls for tickets list */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-850 rounded-2xl">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider text-center sm:text-left">
+                  {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredTickets.length)} of {filteredTickets.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[9px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-805 disabled:opacity-45 transition-all cursor-pointer"
+                  >
+                    Prev
+                  </button>
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`w-5.5 h-5.5 rounded-md flex items-center justify-center text-[9px] font-extrabold transition-all cursor-pointer ${
+                        currentPage === i + 1
+                          ? "bg-brand text-white"
+                          : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[9px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-805 disabled:opacity-45 transition-all cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>

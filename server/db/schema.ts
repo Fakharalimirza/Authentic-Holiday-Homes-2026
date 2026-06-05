@@ -16,7 +16,8 @@ export const SCHEMA_STATEMENTS = [
       phone VARCHAR(50) DEFAULT '',
       role VARCHAR(50) DEFAULT 'guest',
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      wishlist TEXT
+      wishlist TEXT,
+      dob VARCHAR(50) DEFAULT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS properties (
       id VARCHAR(128) PRIMARY KEY,
@@ -206,6 +207,14 @@ export const SCHEMA_STATEMENTS = [
       permitDocUrl TEXT DEFAULT NULL,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       isDeleted TINYINT(1) DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS email_templates (
+      id VARCHAR(128) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL UNIQUE,
+      subject VARCHAR(255) NOT NULL,
+      body TEXT NOT NULL,
+      variables VARCHAR(255) DEFAULT '',
+      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   )`
 ];
 
@@ -283,6 +292,11 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
       await p.query("ALTER TABLE users ADD COLUMN password VARCHAR(255) DEFAULT ''");
     } catch (e) {}
 
+    // Ensure dob column exists in users table
+    try {
+      await p.query("ALTER TABLE users ADD COLUMN dob VARCHAR(50) DEFAULT NULL");
+    } catch (e) {}
+
     // Ensure modern columns exist in units table (inventory management)
     const unitColsToAdd = [
       { name: "unitType", type: "VARCHAR(100) DEFAULT 'Apartment'" },
@@ -339,6 +353,44 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
     } catch (e) {
       console.warn("[MySQL Auto-Init] Could not run property_amenities migration check:", e);
     }
+
+    // Pre-populate default email templates if empty
+    try {
+      const [rows] = await p.query("SELECT COUNT(*) as count FROM email_templates");
+      const count = (rows as any)?.[0]?.count || 0;
+      if (count === 0) {
+        console.log("[MySQL Auto-Init] Pre-populating default email templates...");
+        const defaultTemplates = [
+          {
+            id: "birthday",
+            name: "Birthday Greeting",
+            subject: "Happy Birthday {{displayName}}! 🎂",
+            body: `Dear {{displayName}},\n\nSending you our warmest wishes on your birthday! Hope your day is filled with joy, laughter, and great moments.\n\nThank you for being part of our application.\n\nBest regards,\nThe Team`,
+            variables: "displayName"
+          },
+          {
+            id: "booking_received",
+            name: "Booking Request Received",
+            subject: "We received your booking request! Details inside",
+            body: `Dear {{guestName}},\n\nThank you for choosing us! We have received your booking request for "{{propertyName}}".\n\nBooking details:\n- Check In: {{checkIn}}\n- Check Out: {{checkOut}}\n- Total Price: AED {{totalPrice}}\n\nOur team will review your booking and get in touch shortly to confirm.\n\nWarm regards,\nThe Booking Team`,
+            variables: "guestName,propertyName,checkIn,checkOut,totalPrice"
+          },
+          {
+            id: "booking_confirmed",
+            name: "Booking Request Confirmed",
+            subject: "Booking Confirmed: We look forward to hosting you!",
+            body: `Dear {{guestName}},\n\nGreat news! Your booking request for "{{propertyName}}" has been confirmed.\n\nBooking details:\n- Check In: {{checkIn}}\n- Check Out: {{checkOut}}\n- Total Price: AED {{totalPrice}}\n\nIf you have any questions or require assistance, please feel free to contact us via the client chat portal.\n\nWarm regards,\nThe Booking Team`,
+            variables: "guestName,propertyName,checkIn,checkOut,totalPrice"
+          }
+        ];
+        for (const t of defaultTemplates) {
+          await p.query(
+            "INSERT INTO email_templates (id, name, subject, body, variables) VALUES (?, ?, ?, ?, ?)",
+            [t.id, t.name, t.subject, t.body, t.variables]
+          );
+        }
+      }
+    } catch (e) {}
 
     initialized = true;
     console.log("[MySQL Auto-Init] All tables verified & synchronized.");

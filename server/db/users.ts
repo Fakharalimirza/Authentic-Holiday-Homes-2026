@@ -21,7 +21,8 @@ export async function saveUser(uid: string, data: any): Promise<void> {
           password = ?,
           phone = ?,
           role = ?,
-          wishlist = ?
+          wishlist = ?,
+          dob = ?
       WHERE uid = ?
     `, [
       merged.email,
@@ -30,6 +31,7 @@ export async function saveUser(uid: string, data: any): Promise<void> {
       merged.phone || '',
       finalRole,
       wishlistJson,
+      merged.dob || null,
       uid
     ]);
   } else {
@@ -42,11 +44,12 @@ export async function saveUser(uid: string, data: any): Promise<void> {
     const passVal = data.password || '';
     const displayVal = data.displayName || '';
     const phoneVal = data.phone || '';
+    const dobVal = data.dob || null;
 
     await query(`
-      INSERT INTO users (uid, email, displayName, password, phone, role, wishlist)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [uid, emailVal, displayVal, passVal, phoneVal, finalRole, wishlistJson]);
+      INSERT INTO users (uid, email, displayName, password, phone, role, wishlist, dob)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [uid, emailVal, displayVal, passVal, phoneVal, finalRole, wishlistJson, dobVal]);
   }
 }
 
@@ -76,7 +79,8 @@ export async function getUser(uid: string): Promise<any | null> {
     phone: row.phone || '',
     role: finalRole,
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-    wishlist: safeParseWishlist(row.wishlist)
+    wishlist: safeParseWishlist(row.wishlist),
+    dob: row.dob || null
   };
 }
 
@@ -96,7 +100,8 @@ export async function getUserByEmail(email: string): Promise<any | null> {
     phone: row.phone || '',
     role: finalRole,
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-    wishlist: safeParseWishlist(row.wishlist)
+    wishlist: safeParseWishlist(row.wishlist),
+    dob: row.dob || null
   };
 }
 
@@ -114,7 +119,8 @@ export async function getAllUsers(): Promise<any[]> {
       phone: row.phone || '',
       role: finalRole,
       createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-      wishlist: safeParseWishlist(row.wishlist)
+      wishlist: safeParseWishlist(row.wishlist),
+      dob: row.dob || null
     };
   });
 }

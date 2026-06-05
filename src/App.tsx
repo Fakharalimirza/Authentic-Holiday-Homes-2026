@@ -27,6 +27,41 @@ const AcceptInvite = React.lazy(() => import('./pages/AcceptInvite'));
 import Footer from './components/Footer';
 import Logo from './components/Logo';
 
+const USFlag = () => (
+  <svg viewBox="0 0 100 100" className="w-5 h-5 rounded-full inline-block shadow-sm overflow-hidden border border-zinc-200/50 dark:border-zinc-800/50 shrink-0">
+    <rect width="100" height="100" fill="#ffffff" />
+    <rect y="0" width="100" height="7.69" fill="#B22234" />
+    <rect y="15.38" width="100" height="7.69" fill="#B22234" />
+    <rect y="30.77" width="100" height="7.69" fill="#B22234" />
+    <rect y="46.15" width="100" height="7.69" fill="#B22234" />
+    <rect y="61.54" width="100" height="7.69" fill="#B22234" />
+    <rect y="76.92" width="100" height="7.69" fill="#B22234" />
+    <rect y="92.31" width="100" height="7.69" fill="#B22234" />
+    <rect width="40" height="53.8" fill="#3C3B6E" />
+    <g fill="#ffffff">
+      <circle cx="8" cy="10" r="1.5" />
+      <circle cx="20" cy="10" r="1.5" />
+      <circle cx="32" cy="10" r="1.5" />
+      <circle cx="14" cy="22" r="1.5" />
+      <circle cx="26" cy="22" r="1.5" />
+      <circle cx="8" cy="34" r="1.5" />
+      <circle cx="20" cy="34" r="1.5" />
+      <circle cx="32" cy="34" r="1.5" />
+      <circle cx="14" cy="44" r="1.5" />
+      <circle cx="26" cy="44" r="1.5" />
+    </g>
+  </svg>
+);
+
+const UAEFlag = () => (
+  <svg viewBox="0 0 100 100" className="w-5 h-5 rounded-full inline-block shadow-sm overflow-hidden border border-zinc-200/50 dark:border-zinc-800/50 shrink-0">
+    <rect width="100" height="100" fill="#ffffff" />
+    <rect width="25" height="100" fill="#FF0000" />
+    <rect x="25" width="75" height="33.3" fill="#00732F" />
+    <rect x="25" y="66.6" width="75" height="33.4" fill="#000000" />
+  </svg>
+);
+
 function Navbar() {
   const { user, profile, isAuthModalOpen, setIsAuthModalOpen } = useAuth();
   const { t, theme, resolvedTheme, setTheme, lang, setLang } = useSettings();
@@ -65,8 +100,8 @@ function Navbar() {
             </Link>
             <div className="flex items-center border-r border-zinc-200 dark:border-zinc-800 pr-4 mr-2 gap-2">
               <NotificationCenter />
-              <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} className="w-10 h-10 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-lg">
-                {lang === 'en' ? '🇦🇪' : '🇺🇸'}
+              <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} className="w-10 h-10 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                {lang === 'en' ? <UAEFlag /> : <USFlag />}
               </button>
               <button onClick={() => setTheme(resolvedTheme === 'light' ? 'dark' : 'light')} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
                 {resolvedTheme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
@@ -162,11 +197,11 @@ function Navbar() {
                   <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col gap-1.5 shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-brand/10 text-brand rounded-full flex items-center justify-center font-black text-sm uppercase">
-                        {profile?.firstName ? profile.firstName.charAt(0) : (user.email ? user.email.charAt(0) : 'U')}
+                        {(profile?.displayName || user?.displayName || user.email || 'U').charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-bold text-zinc-900 dark:text-white truncate">
-                          {profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}` : 'Authenticated User'}
+                          {profile?.displayName || user?.displayName || (profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}` : 'Authenticated User')}
                         </h4>
                         <p className="text-[11px] text-zinc-400 truncate font-mono">{user.email}</p>
                       </div>
@@ -283,7 +318,7 @@ function Navbar() {
                       }}
                       className="flex items-center justify-center gap-2 p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-850 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-100 border border-zinc-100 dark:border-zinc-800 transition-all shadow-sm"
                     >
-                      <span className="text-lg">{lang === 'en' ? '🇦🇪' : '🇺🇸'}</span> 
+                      {lang === 'en' ? <UAEFlag /> : <USFlag />}
                       <span>{lang === 'en' ? 'العربية' : 'English'}</span>
                     </button>
                     <button 

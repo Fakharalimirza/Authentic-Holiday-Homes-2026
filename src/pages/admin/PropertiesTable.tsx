@@ -23,6 +23,12 @@ export default function PropertiesTable({
   deletingId
 }: PropertiesTableProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [properties.length]);
 
   if (loading) {
     return (
@@ -41,6 +47,10 @@ export default function PropertiesTable({
       </div>
     );
   }
+
+  const totalPages = Math.ceil(properties.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProperties = properties.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="space-y-4">
@@ -79,7 +89,7 @@ export default function PropertiesTable({
 
       {viewMode === 'list' ? (
         <div className="grid grid-cols-1 gap-4">
-          {properties.map(p => (
+          {paginatedProperties.map(p => (
             <div 
               key={p.id} 
               className="flex flex-col md:flex-row items-center gap-6 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm transition-hover hover:border-zinc-300 dark:hover:hover:border-zinc-700"
@@ -164,7 +174,7 @@ export default function PropertiesTable({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {properties.map((p) => (
+          {paginatedProperties.map((p) => (
             <div
               key={p.id}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
@@ -262,6 +272,52 @@ export default function PropertiesTable({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Elegant Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-zinc-100 dark:border-zinc-850/60">
+          <span className="text-[11px] text-zinc-500 font-medium font-sans uppercase tracking-wider">
+            Showing <strong className="text-zinc-800 dark:text-zinc-200">{startIndex + 1}</strong> to{" "}
+            <strong className="text-zinc-800 dark:text-zinc-200">
+              {Math.min(startIndex + itemsPerPage, properties.length)}
+            </strong>{" "}
+            of <strong className="text-zinc-800 dark:text-zinc-200">{properties.length}</strong> active listings
+          </span>
+          
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+            >
+              Prev
+            </button>
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all cursor-pointer ${
+                  currentPage === i + 1
+                    ? "bg-brand text-white shadow-sm"
+                    : "border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

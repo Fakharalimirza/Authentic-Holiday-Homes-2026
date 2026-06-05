@@ -2,6 +2,13 @@ import { Router } from "express";
 import { GoogleGenAI } from "@google/genai";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
+import { 
+  getEmailTemplates, 
+  getEmailTemplateById, 
+  saveEmailTemplate, 
+  sendTemplatedEmail 
+} from "../db/email_templates";
+import { executeBirthdayCheck } from "../services/birthdayScheduler";
 
 const router = Router();
 
@@ -111,6 +118,87 @@ router.post("/payments/create-intent", async (req, res) => {
   } catch (error: any) {
     console.error("Stripe Error:", error);
     res.status(500).json({ error: error instanceof Error ? error.message : "Payment failed" });
+  }
+});
+
+// --- ADMIN EMAIL TEMPLATES MODULE ---
+router.get("/email-templates", async (req, res) => {
+  try {
+    const list = await getEmailTemplates();
+    res.json({ success: true, templates: list });
+  } catch (error: any) {
+    console.error("Failed to get email templates:", error);
+    res.status(500).json({ error: "Failed to load email templates" });
+  }
+});
+
+router.get("/email-templates/:id", async (req, res) => {
+  try {
+    const item = await getEmailTemplateById(req.params.id);
+    if (!item) return res.status(404).json({ error: "Template not found" });
+    res.json({ success: true, template: item });
+  } catch (error: any) {
+    console.error("Failed to get email template:", error);
+    res.status(500).json({ error: "Failed to load template" });
+  }
+});
+
+router.put("/email-templates/:id", async (req, res) => {
+  try {
+    const { name, subject, body, variables } = req.body;
+    if (!name || !subject || !body) {
+      return res.status(400).json({ error: "Missing required fields (name, subject, body)" });
+    }
+    await saveEmailTemplate(req.params.id, name, subject, body, variables || '');
+    res.json({ success: true, message: "Template saved successfully" });
+  } catch (error: any) {
+    console.error("Failed to save email template:", error);
+    res.status(500).json({ error: "Failed to save template" });
+  }
+});
+
+router.post("/email-templates/:id/test-send", async (req, res) => {
+  try {
+    const { email, variables } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Missing recipient email" });
+    }
+    
+    // Fallback variables if not fully specified
+    const testVars = {
+      displayName: "Simulated User",
+      guestName: "John Doe",
+      propertyName: "Luxury Burj Khalifa Suite",
+      checkIn: "2026-06-15",
+      checkOut: "2026-06-20",
+      totalPrice: "12,500",
+      ...variables
+    };
+
+    const outcome = await sendTemplatedEmail(email, req.params.id, testVars);
+    if (outcome) {
+      res.json({ success: true, message: "Test templated email triggered successfully. Check logs for trace outputs." });
+    } else {
+      res.status(500).json({ error: "Failed to send templated email. SMTP credentials might not be configured." });
+    }
+  } catch (error: any) {
+    console.error("Failed to execute test send:", error);
+    res.status(500).json({ error: error.message || "Failed to trigger templated email" });
+  }
+});
+
+router.post("/birthday-check", async (req, res) => {
+  try {
+    const results = await executeBirthdayCheck();
+    res.json({
+      success: true,
+      message: "Birthday database check executed successfully.",
+      processedMatchCount: results.processedCount,
+      sentEmails: results.sentEmails
+    });
+  } catch (err: any) {
+    console.error("Manual birthday check failed:", err);
+    res.status(500).json({ error: err.message || "Birthday check process failed" });
   }
 });
 

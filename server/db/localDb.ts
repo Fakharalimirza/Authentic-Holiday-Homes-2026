@@ -21,6 +21,7 @@ export interface LocalData {
   landlords: any[];
   buildings: any[];
   units: any[];
+  email_templates: any[];
 }
 
 function getInitialLocalData(): LocalData {
@@ -41,7 +42,30 @@ function getInitialLocalData(): LocalData {
     property_amenities: [],
     landlords: [],
     buildings: [],
-    units: []
+    units: [],
+    email_templates: [
+      {
+        id: "birthday",
+        name: "Birthday Greeting",
+        subject: "Happy Birthday {{displayName}}! 🎂",
+        body: `Dear {{displayName}},\n\nSending you our warmest wishes on your birthday! Hope your day is filled with joy, laughter, and great moments.\n\nThank you for being part of our application.\n\nBest regards,\nThe Team`,
+        variables: "displayName"
+      },
+      {
+        id: "booking_received",
+        name: "Booking Request Received",
+        subject: "We received your booking request! Details inside",
+        body: `Dear {{guestName}},\n\nThank you for choosing us! We have received your booking request for "{{propertyName}}".\n\nBooking details:\n- Check In: {{checkIn}}\n- Check Out: {{checkOut}}\n- Total Price: AED {{totalPrice}}\n\nOur team will review your booking and get in touch shortly to confirm.\n\nWarm regards,\nThe Booking Team`,
+        variables: "guestName,propertyName,checkIn,checkOut,totalPrice"
+      },
+      {
+        id: "booking_confirmed",
+        name: "Booking Request Confirmed",
+        subject: "Booking Confirmed: We look forward to hosting you!",
+        body: `Dear {{guestName}},\n\nGreat news! Your booking request for "{{propertyName}}" has been confirmed.\n\nBooking details:\n- Check In: {{checkIn}}\n- Check Out: {{checkOut}}\n- Total Price: AED {{totalPrice}}\n\nIf you have any questions or require assistance, please feel free to contact us via the client chat portal.\n\nWarm regards,\nThe Booking Team`,
+        variables: "guestName,propertyName,checkIn,checkOut,totalPrice"
+      }
+    ]
   };
 }
 
@@ -87,7 +111,7 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
     "users", "properties", "property_reviews", "bookings", "secured_documents",
     "turnovers", "tickets", "staff_messages", "staff_dms", "invitations",
     "audit_logs", "settings", "device_tokens", "property_amenities", "landlords",
-    "buildings", "units"
+    "buildings", "units", "email_templates"
   ];
   for (const t of tables) {
     if (norm.includes(` ${t} `) || norm.includes(` ${t}(`) || norm.includes(` ${t},`) || norm.endsWith(` ${t}`)) {
@@ -198,6 +222,12 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
         filtered = filtered.filter(row => row.isDeleted === 0 || !row.isDeleted);
       }
       filtered.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    } else if (tableName === "email_templates") {
+      if (norm.includes("id = ?")) {
+        filtered = filtered.filter(row => row.id === params[0]);
+      } else if (norm.includes("name = ?")) {
+        filtered = filtered.filter(row => row.name === params[0]);
+      }
     }
 
     return filtered;
@@ -231,6 +261,7 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
     else if (tableName === "staff_messages") keyName = "id";
     else if (tableName === "staff_dms") keyName = "id";
     else if (tableName === "audit_logs") keyName = "id";
+    else if (tableName === "email_templates") keyName = "id";
 
     if (tableName === "users") {
       let resolvedUid = "";
@@ -240,33 +271,28 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
       let resolvedPhone = "";
       let resolvedRole = "";
       let resolvedWishlist = "[]";
+      let resolvedDob = null;
 
       if (norm.startsWith("update users")) {
-        // params: [email, displayName, password, phone, role, wishlist, uid]
+        // params: [email, displayName, password, phone, role, wishlist, dob, uid]
         resolvedEmail = params[0] || "";
         resolvedDisplayName = params[1] || "";
         resolvedPassword = params[2] || "";
         resolvedPhone = params[3] || "";
         resolvedRole = params[4] || "";
         resolvedWishlist = params[5] || "[]";
-        resolvedUid = params[6] || "";
+        resolvedDob = params[6] || null;
+        resolvedUid = params[7] || "";
       } else {
-        // params: [uid, email, displayName, passwordOrPhone, phoneOrRole, roleOrWishlist, wishlistVal]
-        const [uidVal, emailVal, displayNameVal, passwordOrPhone, phoneOrRole, roleOrWishlist, wishlistVal] = params;
-        resolvedUid = uidVal || "";
-        resolvedEmail = emailVal || "";
-        resolvedDisplayName = displayNameVal || "";
-        
-        if (params.length === 7) {
-          resolvedPassword = passwordOrPhone || "";
-          resolvedPhone = phoneOrRole || "";
-          resolvedRole = roleOrWishlist || "";
-          resolvedWishlist = wishlistVal || "[]";
-        } else {
-          resolvedPhone = passwordOrPhone || "";
-          resolvedRole = phoneOrRole || "";
-          resolvedWishlist = roleOrWishlist || "[]";
-        }
+        // params: [uid, email, displayName, password, phone, role, wishlist, dob]
+        resolvedUid = params[0] || "";
+        resolvedEmail = params[1] || "";
+        resolvedDisplayName = params[2] || "";
+        resolvedPassword = params[3] || "";
+        resolvedPhone = params[4] || "";
+        resolvedRole = params[5] || "";
+        resolvedWishlist = params[6] || "[]";
+        resolvedDob = params[7] || null;
       }
 
       let parsedWishlist = [];
@@ -278,6 +304,7 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
         displayName: resolvedDisplayName || "",
         password: resolvedPassword || "",
         phone: resolvedPhone || "",
+        dob: resolvedDob,
         role: (resolvedEmail && resolvedEmail.toLowerCase() === 'fakharalimirza@gmail.com') ? 'super_admin' : (resolvedRole || 'guest'),
         wishlist: Array.isArray(parsedWishlist) ? parsedWishlist : []
       };
@@ -361,6 +388,38 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
         db.tickets[existingIdx] = { ...db.tickets[existingIdx], ...record };
       } else {
         db.tickets.push(record);
+      }
+    } else if (tableName === "email_templates") {
+      let resolvedId = "";
+      let resolvedName = "";
+      let resolvedSubject = "";
+      let resolvedBody = "";
+      let resolvedVariables = "";
+
+      if (norm.startsWith("update email_templates")) {
+        const [name, subject, body, variables, id] = params;
+        resolvedName = name || "";
+        resolvedSubject = subject || "";
+        resolvedBody = body || "";
+        resolvedVariables = variables || "";
+        resolvedId = id;
+
+        const existing = db.email_templates.find(row => row.id === resolvedId);
+        if (existing) {
+          existing.name = resolvedName;
+          existing.subject = resolvedSubject;
+          existing.body = resolvedBody;
+          existing.variables = resolvedVariables;
+        }
+      } else {
+        const [id, name, subject, body, variables] = params;
+        const record = { id, name, subject, body, variables };
+        const existingIdx = db.email_templates.findIndex(row => row.id === id);
+        if (existingIdx >= 0) {
+          db.email_templates[existingIdx] = { ...db.email_templates[existingIdx], ...record };
+        } else {
+          db.email_templates.push(record);
+        }
       }
     } else if (tableName === "secured_documents") {
       if (norm.includes("set isdeleted = 1")) {

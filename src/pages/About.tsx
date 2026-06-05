@@ -264,7 +264,7 @@ export default function About() {
         </div>
 
         <div className="container mx-auto px-4 mb-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
             {/* Leasing Team */}
             <div>
               <div className="flex justify-between items-end mb-4 px-2 border-b border-zinc-100 dark:border-zinc-800 pb-4">
@@ -278,19 +278,17 @@ export default function About() {
               <div className="flex justify-between items-end mb-4 px-2 border-b border-zinc-100 dark:border-zinc-800 pb-4">
                 <h3 className="text-2xl font-bold tracking-tighter text-zinc-900 dark:text-white uppercase">{t('admin_team')}</h3>
               </div>
-              <TeamCarousel members={adminTeam} speed={25} small={true} />
+              <TeamCarousel members={adminTeam} speed={30} small={true} />
             </div>
-          </div>
-        </div>
 
-        {/* Maintenance Team - Full Row Carousel */}
-        <div className="mb-20">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-end mb-4 px-2 border-b border-zinc-100 dark:border-zinc-800 pb-4">
-              <h3 className="text-3xl font-bold tracking-tighter text-zinc-900 dark:text-white uppercase">{t('maintenance_team')}</h3>
+            {/* Maintenance & Cleaning Team */}
+            <div>
+              <div className="flex justify-between items-end mb-4 px-2 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+                <h3 className="text-2xl font-bold tracking-tighter text-zinc-900 dark:text-white uppercase">{t('maintenance_team')}</h3>
+              </div>
+              <TeamCarousel members={maintenanceTeam} speed={30} small={true} />
             </div>
           </div>
-          <TeamCarousel members={maintenanceTeam} speed={50} />
         </div>
       </section>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import { useGlobalSettings } from '../contexts/GlobalSettingsContext';
 
 const API_KEY = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || '';
 const MAP_ID = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
@@ -15,6 +16,9 @@ interface PropertyMapProps {
 }
 
 export default function PropertyMap({ center, zoom = 15 }: PropertyMapProps) {
+  const { settings } = useGlobalSettings();
+  const brandColor = settings?.customBrandColor || '#D91F28';
+
   const safeCenter = {
     lat: typeof center?.lat === 'number' && !isNaN(center.lat) ? center.lat : 25.2048,
     lng: typeof center?.lng === 'number' && !isNaN(center.lng) ? center.lng : 55.2708,
@@ -46,7 +50,7 @@ export default function PropertyMap({ center, zoom = 15 }: PropertyMapProps) {
           disableDefaultUI={true}
         >
           <AdvancedMarker position={safeCenter}>
-            <Pin background="#18181b" glyphColor="#fff" borderColor="#fff" />
+            <Pin background={brandColor} glyphColor="#fff" borderColor="#fff" />
           </AdvancedMarker>
         </Map>
       </APIProvider>

@@ -13,6 +13,7 @@ import invitationRouter from "./server/routes/invitation";
 import servicesRouter from "./server/routes/services";
 import auditRouter from "./server/routes/audit";
 import authRouter from "./server/routes/auth";
+import { startBirthdayScheduler } from "./server/services/birthdayScheduler";
 
 
 async function startServer() {
@@ -82,6 +83,11 @@ async function startServer() {
   // Bind and listen on HTTP Server wrapper
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`[Authentic Holiday Homes] Portal platform is live on http://localhost:${PORT}`);
+    try {
+      startBirthdayScheduler();
+    } catch (e) {
+      console.error("Failed to trigger automated birthday scheduler:", e);
+    }
   });
 }
 

@@ -7,9 +7,10 @@ import {
   InfoWindow,
 } from '@vis.gl/react-google-maps';
 import { Link } from 'react-router-dom';
-import { MapPin } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import CurrencySymbol from './CurrencySymbol';
 import { Property } from '../types';
+import { useGlobalSettings } from '../contexts/GlobalSettingsContext';
 
 const API_KEY = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || '';
 const MAP_ID = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
@@ -40,7 +41,31 @@ export default function PropertiesMap({
   height = '450px',
   defaultZoom = 11,
 }: PropertiesMapProps) {
+  const { settings } = useGlobalSettings();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+
+  const brandColor = settings?.customBrandColor || '#D91F28';
+  
+  const darkenColor = (hex: string, percent: number) => {
+    try {
+      const cleanHex = hex.replace('#', '');
+      let num = parseInt(cleanHex, 16);
+      let amt = Math.round(2.55 * percent);
+      let R = (num >> 16) + amt;
+      let G = (num >> 8 & 0x00ff) + amt;
+      let B = (num & 0x0000ff) + amt;
+      
+      R = Math.max(0, Math.min(255, R));
+      G = Math.max(0, Math.min(255, G));
+      B = Math.max(0, Math.min(255, B));
+      
+      return '#' + (0x1000000 + R * 0x10000 + G * 0x105 + B).toString(16).slice(1);
+    } catch (e) {
+      return hex;
+    }
+  };
+
+  const selectedColor = darkenColor(brandColor, -20);
 
   const defaultCenter = { lat: 25.1972, lng: 55.2744 };
 
@@ -109,10 +134,10 @@ export default function PropertiesMap({
                 onClick={() => setSelectedProperty(property)}
               >
                 <Pin
-                  background={isSelected ? '#b45309' : '#18181b'}
+                  background={isSelected ? selectedColor : brandColor}
                   glyphColor="#fff"
-                  borderColor={isSelected ? '#f59e0b' : '#fff'}
-                  scale={isSelected ? 1.25 : 1}
+                  borderColor={isSelected ? '#ffffff' : 'rgba(255,255,255,0.85)'}
+                  scale={isSelected ? 1.35 : 1.05}
                 />
               </AdvancedMarker>
             );
@@ -127,7 +152,18 @@ export default function PropertiesMap({
               onCloseClick={() => setSelectedProperty(null)}
               headerDisabled={true}
             >
-              <div className="p-1 max-w-[240px] font-sans text-zinc-900 rounded-lg bg-white">
+              <div className="p-1 max-w-[240px] font-sans text-zinc-900 rounded-lg bg-white relative">
+                {/* Elegant Close Button Override */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedProperty(null)}
+                  className="absolute top-2.5 left-2.5 bg-zinc-950/80 hover:bg-zinc-900 text-white p-1.5 rounded-full transition-colors flex items-center justify-center cursor-pointer z-20 shadow-md border border-white/10"
+                  aria-label="Close details popup"
+                  title="Close Details"
+                >
+                  <X size={10} />
+                </button>
+
                 <div className="relative aspect-video rounded-lg overflow-hidden mb-2 shadow-sm bg-zinc-100">
                   <img
                     src={

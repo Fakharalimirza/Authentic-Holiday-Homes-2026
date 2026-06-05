@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { db, auth, collection, query, where, getDocs, doc, getDoc, signOut } from '../lib/firebase';
+import { db, auth, collection, query, where, getDocs, doc, getDoc, setDoc, signOut } from '../lib/firebase';
 import PropertyCard from '../components/PropertyCard';
 import { Property } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,6 +37,21 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
   const [bookings, setBookings] = useState<any[]>([]);
   const [bookedPropertiesList, setBookedPropertiesList] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Local Settings States
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileDob, setProfileDob] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsStatus, setSettingsStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setProfileName(profile.displayName || user?.displayName || '');
+      setProfilePhone(profile.phone || '');
+      setProfileDob(profile.dob || '');
+    }
+  }, [profile, user]);
 
   useEffect(() => {
     if (!user || !profile) return;
@@ -83,9 +98,9 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
         <div className="w-full md:w-64 space-y-2">
           <div className="p-6 bg-zinc-50 dark:bg-zinc-900 rounded-3xl mb-6 flex flex-col items-center text-center">
              <div className="w-20 h-20 bg-zinc-200 dark:bg-zinc-800 rounded-full mb-4 overflow-hidden">
-               {user.photoURL ? <img src={user.photoURL} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-zinc-500 font-bold text-2xl">{user.displayName?.[0]}</div>}
+               {user.photoURL ? <img src={user.photoURL} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-zinc-500 font-bold text-2xl">{(profile?.displayName || user?.displayName)?.[0]}</div>}
              </div>
-             <h2 className="font-bold text-lg">{user.displayName}</h2>
+             <h2 className="font-bold text-lg">{profile?.displayName || user?.displayName}</h2>
              <p className="text-zinc-500 text-sm">{user.email}</p>
           </div>
 
@@ -267,42 +282,126 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
                 exit={{ opacity: 0, x: -20 }}
               >
                 <h2 className="text-3xl font-bold mb-8">Account Settings</h2>
-                <div className="max-w-md space-y-6">
-                   <div className="space-y-2">
-                     <label className="text-sm font-medium text-zinc-500">Display Name</label>
-                     <input type="text" defaultValue={user.displayName || ''} className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent focus:ring-2 focus:ring-zinc-900" />
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-sm font-medium text-zinc-500">Email Address</label>
-                     <input type="email" readOnly value={user.email || ''} className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed" />
-                   </div>
-                   <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                     <label className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider block">Theme Mode</label>
-                     <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-900/50 w-full p-1.5 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                       {[
-                         { id: 'system', label: t('system_mode'), desc: 'Matches device' },
-                         { id: 'light', label: t('light_mode'), desc: 'Always crisp' },
-                         { id: 'dark', label: t('dark_mode'), desc: 'Always dark' }
-                       ].map((opt) => (
-                         <button
-                           key={opt.id}
-                           type="button"
-                           onClick={() => setTheme(opt.id as any)}
-                           className={`flex flex-col items-center justify-center p-3 rounded-xl text-center transition-all ${
-                             theme === opt.id
-                               ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200/50 dark:ring-zinc-700/50'
-                               : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800/30'
-                           }`}
-                         >
-                           <span className="text-xs font-black uppercase tracking-tight">{opt.label}</span>
-                           <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">{opt.desc}</span>
-                         </button>
-                       ))}
-                     </div>
-                   </div>
+                
+                {/* SETTINGS FORM */}
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!user) return;
+                    setSavingSettings(true);
+                    setSettingsStatus(null);
+                    try {
+                      // Save profile in our SQL backend using setDoc adapter
+                      const bodyData = {
+                        ...profile,
+                        displayName: profileName,
+                        phone: profilePhone,
+                        dob: profileDob || null
+                      };
 
-                   <button className="px-8 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand-hover transition-colors">Save Changes</button>
-                </div>
+                      await setDoc(doc(db, 'users', user.uid), bodyData);
+
+                      // Synchronize client auth session state to keep memory and localStorage ahh_user consistent upon reload
+                      auth.updateUserSession({
+                        ...user,
+                        displayName: profileName
+                      }, localStorage.getItem("ahh_token") || undefined);
+
+                      setSettingsStatus({ type: 'success', message: 'Your profile settings have been successfully synchronized!' });
+                      
+                      // Optionally trigger page auto-refresh after 1s to let changes populate everywhere
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 1000);
+                    } catch (err) {
+                      setSettingsStatus({ type: 'error', message: 'Error establishing connection with database service.' });
+                    } finally {
+                      setSavingSettings(false);
+                    }
+                  }} 
+                  className="max-w-md space-y-6"
+                >
+                  {settingsStatus && (
+                    <div className={`p-4 rounded-xl border text-sm flex items-center gap-2.5 ${
+                      settingsStatus.type === 'success' 
+                        ? 'bg-emerald-50 border-emerald-250 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-400' 
+                        : 'bg-red-50 border-red-250 text-red-800 dark:bg-red-950/20 dark:border-red-900/50 dark:text-red-400'
+                    }`}>
+                      <span className="font-semibold">{settingsStatus.message}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-500">Display Name</label>
+                    <input 
+                      type="text" 
+                      value={profileName} 
+                      onChange={(e) => setProfileName(e.target.value)} 
+                      required 
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent focus:ring-2 focus:ring-zinc-900 text-zinc-900 dark:text-zinc-50" 
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-500">Contact Number (Phone)</label>
+                    <input 
+                      type="text" 
+                      placeholder="+971 XX XXX XXXX"
+                      value={profilePhone} 
+                      onChange={(e) => setProfilePhone(e.target.value)} 
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent focus:ring-2 focus:ring-zinc-900 text-zinc-900 dark:text-zinc-50" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-500">Date of Birth (Birthday Rewards 🎉)</label>
+                    <input 
+                      type="date" 
+                      value={profileDob} 
+                      onChange={(e) => setProfileDob(e.target.value)} 
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent focus:ring-2 focus:ring-zinc-900 text-zinc-900 dark:text-zinc-50" 
+                    />
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">Provide your birthday to automatically receive greetings and booking rewards on your special day.</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-500">Email Address</label>
+                    <input type="email" readOnly value={user.email || ''} className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed" />
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <label className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider block">Theme Mode</label>
+                    <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-900/50 w-full p-1.5 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                      {[
+                        { id: 'system', label: t('system_mode'), desc: 'Matches device' },
+                        { id: 'light', label: t('light_mode'), desc: 'Always crisp' },
+                        { id: 'dark', label: t('dark_mode'), desc: 'Always dark' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setTheme(opt.id as any)}
+                          className={`flex flex-col items-center justify-center p-3 rounded-xl text-center transition-all ${
+                            theme === opt.id
+                              ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200/50 dark:ring-zinc-700/50'
+                              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800/30'
+                          }`}
+                        >
+                          <span className="text-xs font-black uppercase tracking-tight">{opt.label}</span>
+                          <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">{opt.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={savingSettings}
+                    className="px-8 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand-hover transition-colors disabled:bg-zinc-400 flex items-center gap-2"
+                  >
+                    {savingSettings ? 'Saving changes...' : 'Save Changes'}
+                  </button>
+                </form>
               </motion.div>
             )}
           </AnimatePresence>
