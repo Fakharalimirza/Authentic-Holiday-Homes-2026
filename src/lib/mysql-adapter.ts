@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged } from "./firebase";
 
 // Initialize global Socket.io client instance
 export const socket = io({
-  transports: ["websocket", "polling"]
+  transports: ["polling", "websocket"]
 });
 
 let isSocketConnected = false;
