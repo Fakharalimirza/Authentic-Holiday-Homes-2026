@@ -260,6 +260,7 @@ export default function PropertyFormModal({
         category: form.category,
         description: form.description,
         price: Number(form.price),
+        priceMonthly: Number(form.priceMonthly || 0),
         unitNumber: form.unitNumber,
         buildingName: form.buildingName,
         referenceNo: form.referenceNo,

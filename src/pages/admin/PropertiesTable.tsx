@@ -115,14 +115,25 @@ export default function PropertiesTable({
                 </div>
                 <p className="text-sm text-zinc-500 dark:text-zinc-405 mt-2">{p.location?.address}</p>
               </div>
-              <div className="text-center md:text-right px-4">
-                <p className="font-bold text-zinc-650 dark:text-zinc-350 flex items-center justify-center md:justify-end gap-1">
-                  <CurrencySymbol size="1.1em" /> {p.price}
-                </p>
+              <div className="text-center md:text-right px-4 space-y-1 min-w-[125px]">
+                <div className="text-zinc-650 dark:text-zinc-350">
+                  <p className="text-[9px] uppercase font-black tracking-wider text-zinc-400">Nightly</p>
+                  <p className="font-bold flex items-center justify-center md:justify-end gap-1">
+                    <CurrencySymbol size="1.1em" /> {p.price}
+                  </p>
+                </div>
+                {p.priceMonthly ? (
+                  <div className="text-zinc-650 dark:text-zinc-350 pt-0.5">
+                    <p className="text-[9px] uppercase font-black tracking-wider text-zinc-400">Monthly</p>
+                    <p className="font-bold flex items-center justify-center md:justify-end gap-1 text-xs">
+                      <CurrencySymbol size="1em" /> {p.priceMonthly}
+                    </p>
+                  </div>
+                ) : null}
                 <button 
                   type="button"
                   onClick={() => toggleAvailability(p.id, !!p.isAvailable)}
-                  className={`text-[10px] uppercase font-bold mt-1 px-3 py-1 rounded-full border transition-all ${
+                  className={`text-[10px] uppercase font-bold mt-1.5 px-3 py-1 rounded-full border transition-all ${
                     p.isAvailable 
                       ? 'text-green-500 border-green-200 bg-green-50 dark:bg-green-905/10' 
                       : 'text-red-500 border-red-200 bg-red-50 dark:bg-red-905/10'
@@ -206,11 +217,25 @@ export default function PropertiesTable({
                     <p className="text-xs text-zinc-400 truncate mt-0.5">{p.location?.address}</p>
                   </div>
 
-                  <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950/30 p-2.5 rounded-xl border border-zinc-105 dark:border-zinc-850">
-                    <span className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Per Month Rent:</span>
-                    <span className="font-bold text-zinc-850 dark:text-zinc-100 text-xs flex items-center gap-1 font-sans">
-                      <CurrencySymbol size="1.1em" /> {p.price}
-                    </span>
+                  <div className="grid grid-cols-2 gap-2 bg-zinc-50 dark:bg-zinc-950/30 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-850">
+                    <div className="flex flex-col text-left">
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Nightly Rate:</span>
+                      <span className="font-extrabold text-zinc-800 dark:text-zinc-100 text-xs flex items-center gap-0.5 font-sans mt-0.5">
+                        <CurrencySymbol size="1em" />{p.price}
+                      </span>
+                    </div>
+                    <div className="flex flex-col text-right border-l border-zinc-200/50 dark:border-zinc-800/80 pl-2">
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Monthly Rate:</span>
+                      <span className="font-extrabold text-zinc-800 dark:text-zinc-100 text-xs flex items-center gap-0.5 justify-end font-sans mt-0.5">
+                        {p.priceMonthly ? (
+                          <>
+                            <CurrencySymbol size="1em" />{p.priceMonthly}
+                          </>
+                        ) : (
+                          'N/A'
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

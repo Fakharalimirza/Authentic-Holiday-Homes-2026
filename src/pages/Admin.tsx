@@ -104,7 +104,7 @@ export default function Admin() {
 
     // Properties tab
     if (['super_admin', 'admin', 'agent', 'landlord', 'host'].includes(role)) {
-      list.push({ id: 'properties', label: 'Properties & Units', icon: Building2, category: 'Main Console' });
+      list.push({ id: 'properties', label: 'Listings', icon: Building2, category: 'Main Console' });
     }
     
     // Bookings tab

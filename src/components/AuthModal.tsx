@@ -337,7 +337,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {emailMode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h3>
               <p className="text-zinc-400 text-xs font-semibold mb-6">
-                {emailMode === 'login' ? 'Let\'s get you back inside your reservation panel.' : 'Enter your details below to activate exclusive access.'}
+                {emailMode === 'login' ? "Let's get you back inside your reservation panel." : "Enter your details below to activate exclusive access."}
               </p>
 
               <form onSubmit={handleEmailAuth} className="space-y-4">
@@ -350,7 +350,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       placeholder="Your Name"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold"
+                      className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                     />
                   </div>
                 )}
@@ -363,7 +363,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     placeholder="email@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                   />
                 </div>
 
@@ -375,7 +375,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                   />
                 </div>
 

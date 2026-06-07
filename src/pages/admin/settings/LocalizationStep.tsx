@@ -21,13 +21,13 @@ export default function LocalizationStep({ localSettings, setLocalSettings }: Lo
           <select
             value={localSettings.currencyOfChoice}
             onChange={e => setLocalSettings(prev => ({ ...prev, currencyOfChoice: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white focus:outline-none"
           >
-            <option value="AED">AED (UAE Dirham)</option>
-            <option value="USD">USD (US Dollar)</option>
-            <option value="EUR">EUR (Euro)</option>
-            <option value="GBP">GBP (British Pound)</option>
-            <option value="SAR">SAR (Saudi Riyal)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="AED">AED (UAE Dirham)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="USD">USD (US Dollar)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="EUR">EUR (Euro)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="GBP">GBP (British Pound)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="SAR">SAR (Saudi Riyal)</option>
           </select>
         </div>
 
@@ -37,7 +37,7 @@ export default function LocalizationStep({ localSettings, setLocalSettings }: Lo
             type="text"
             value={localSettings.currencySymbol}
             onChange={e => setLocalSettings(prev => ({ ...prev, currencySymbol: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. AED or د.إ or $"
           />
         </div>
@@ -47,13 +47,13 @@ export default function LocalizationStep({ localSettings, setLocalSettings }: Lo
           <select
             value={localSettings.timezoneValue}
             onChange={e => setLocalSettings(prev => ({ ...prev, timezoneValue: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white focus:outline-none"
           >
-            <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
-            <option value="UTC">Coordinated Universal Time (UTC)</option>
-            <option value="Europe/London">Europe/London (GMT/BST)</option>
-            <option value="America/New_York">America/New_York (EST)</option>
-            <option value="Asia/Riyadh">Asia/Riyadh (UTC+3)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="UTC">Coordinated Universal Time (UTC)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="Europe/London">Europe/London (GMT/BST)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="America/New_York">America/New_York (EST)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="Asia/Riyadh">Asia/Riyadh (UTC+3)</option>
           </select>
         </div>
 
@@ -62,12 +62,12 @@ export default function LocalizationStep({ localSettings, setLocalSettings }: Lo
           <select
             value={localSettings.dateFormat}
             onChange={e => setLocalSettings(prev => ({ ...prev, dateFormat: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white focus:outline-none"
           >
-            <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-05-21)</option>
-            <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 21/05/2026)</option>
-            <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 05/21/2026)</option>
-            <option value="MMM DD, YYYY">MMM DD, YYYY (e.g. May 21, 2026)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-05-21)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="DD/MM/YYYY">DD/MM/YYYY (e.g. 21/05/2026)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="MM/DD/YYYY">MM/DD/YYYY (e.g. 05/21/2026)</option>
+            <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="MMM DD, YYYY">MMM DD, YYYY (e.g. May 21, 2026)</option>
           </select>
         </div>
       </div>

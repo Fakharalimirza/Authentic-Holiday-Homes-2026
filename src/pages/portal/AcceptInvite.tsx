@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Key, User, Phone, CheckCircle2, AlertCircle, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
-import { auth, signInWithEmailAndPassword } from '../lib/firebase';
+import { auth, signInWithEmailAndPassword } from '../../lib/firebase';
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();

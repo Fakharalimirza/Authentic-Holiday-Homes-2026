@@ -106,11 +106,11 @@ export default function LetterheadStep({ localSettings, setLocalSettings }: Lett
             <select
               value={localSettings.letterheadPageSize || 'A4'}
               onChange={e => setLocalSettings(prev => ({ ...prev, letterheadPageSize: e.target.value as any }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white focus:outline-none"
             >
-              <option value="A4">A4 Page Size (210mm × 297mm)</option>
-              <option value="Letter">US Letter Page Size (8.5" × 11")</option>
-              <option value="Legal">US Legal Page Size (8.5" × 14")</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="A4">A4 Page Size (210mm × 297mm)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="Letter">US Letter Page Size (8.5" × 11")</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="Legal">US Legal Page Size (8.5" × 14")</option>
             </select>
           </div>
 
@@ -126,7 +126,7 @@ export default function LetterheadStep({ localSettings, setLocalSettings }: Lett
                   max="200"
                   value={localSettings.letterheadMarginTop ?? 20}
                   onChange={e => setLocalSettings(prev => ({ ...prev, letterheadMarginTop: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs focus:outline-none font-bold text-center"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs text-zinc-900 dark:text-white focus:outline-none font-bold text-center"
                 />
               </div>
               
@@ -138,7 +138,7 @@ export default function LetterheadStep({ localSettings, setLocalSettings }: Lett
                   max="200"
                   value={localSettings.letterheadMarginBottom ?? 20}
                   onChange={e => setLocalSettings(prev => ({ ...prev, letterheadMarginBottom: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs focus:outline-none font-bold text-center"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs text-zinc-900 dark:text-white focus:outline-none font-bold text-center"
                 />
               </div>
 
@@ -150,7 +150,7 @@ export default function LetterheadStep({ localSettings, setLocalSettings }: Lett
                   max="200"
                   value={localSettings.letterheadMarginLeft ?? 20}
                   onChange={e => setLocalSettings(prev => ({ ...prev, letterheadMarginLeft: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs focus:outline-none font-bold text-center"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs text-zinc-900 dark:text-white focus:outline-none font-bold text-center"
                 />
               </div>
 
@@ -160,9 +160,9 @@ export default function LetterheadStep({ localSettings, setLocalSettings }: Lett
                   type="number"
                   min="0"
                   max="200"
-                  value={localSettings.letterheadMarginRight ?? 20}
+                  value={localSettings.letterheadMarginRight ?? 25}
                   onChange={e => setLocalSettings(prev => ({ ...prev, letterheadMarginRight: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs focus:outline-none font-bold text-center"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs text-zinc-900 dark:text-white focus:outline-none font-bold text-center"
                 />
               </div>
             </div>

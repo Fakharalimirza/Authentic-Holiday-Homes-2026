@@ -111,12 +111,19 @@ export default function PropertyCard({ property, userLat, userLng }: PropertyCar
           <h3 className="text-lg font-black tracking-tighter text-zinc-900 dark:text-white line-clamp-1">
             {property.title}
           </h3>
-          <div className="flex flex-col items-end">
-            <div className="text-xl font-black text-zinc-900 dark:text-white flex items-center gap-1 leading-none tracking-tighter">
+          <div className="flex flex-col items-end shrink-0">
+            <div className="text-lg font-black text-zinc-900 dark:text-white flex items-center gap-0.5 leading-none tracking-tighter">
               <CurrencySymbol size="0.8em" className="text-brand" />
               {property.price}
+              <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-400 tracking-normal ml-0.5">/night</span>
             </div>
-            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mt-1">{property.purpose === 'For Rent' ? t('monthly') : ''}</span>
+            {property.priceMonthly ? (
+              <div className="text-xs font-extrabold text-zinc-605 dark:text-zinc-350 flex items-center gap-0.5 mt-1 leading-none">
+                <CurrencySymbol size="0.8em" className="text-zinc-400" />
+                {property.priceMonthly}
+                <span className="text-[9px] font-medium text-zinc-400/80 tracking-normal ml-0.5">/month</span>
+              </div>
+            ) : null}
           </div>
         </div>
         

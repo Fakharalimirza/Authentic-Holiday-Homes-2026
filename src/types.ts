@@ -4,6 +4,7 @@ export interface Property {
   category: string;
   description?: string;
   price: number;
+  priceMonthly?: number;
   unitNumber?: string;
   buildingName?: string;
   referenceNo: string;

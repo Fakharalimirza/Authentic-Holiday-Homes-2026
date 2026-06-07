@@ -11,19 +11,19 @@ import AnnouncementPopup from './components/AnnouncementPopup';
 import NotificationCenter from './components/NotificationCenter';
 
 // Lazy load pages
-const Home = React.lazy(() => import('./pages/Home'));
-const PropertyDetails = React.lazy(() => import('./pages/PropertyDetails'));
-const Profile = React.lazy(() => import('./pages/Profile'));
+const Home = React.lazy(() => import('./pages/public/Home'));
+const PropertyDetails = React.lazy(() => import('./pages/public/PropertyDetails'));
+const Profile = React.lazy(() => import('./pages/portal/Profile'));
 const Admin = React.lazy(() => import('./pages/Admin'));
-const Chat = React.lazy(() => import('./pages/Chat'));
-const About = React.lazy(() => import('./pages/About'));
-const Contact = React.lazy(() => import('./pages/Contact'));
-const Privacy = React.lazy(() => import('./pages/Privacy'));
-const Terms = React.lazy(() => import('./pages/Terms'));
-const ListProperty = React.lazy(() => import('./pages/ListProperty'));
-const Properties = React.lazy(() => import('./pages/Properties'));
-const Booking = React.lazy(() => import('./pages/Booking'));
-const AcceptInvite = React.lazy(() => import('./pages/AcceptInvite'));
+const Chat = React.lazy(() => import('./pages/portal/Chat'));
+const About = React.lazy(() => import('./pages/public/About'));
+const Contact = React.lazy(() => import('./pages/public/Contact'));
+const Privacy = React.lazy(() => import('./pages/public/Privacy'));
+const Terms = React.lazy(() => import('./pages/public/Terms'));
+const ListProperty = React.lazy(() => import('./pages/public/ListProperty'));
+const Properties = React.lazy(() => import('./pages/public/Properties'));
+const Booking = React.lazy(() => import('./pages/portal/Booking'));
+const AcceptInvite = React.lazy(() => import('./pages/portal/AcceptInvite'));
 import Footer from './components/Footer';
 import Logo from './components/Logo';
 

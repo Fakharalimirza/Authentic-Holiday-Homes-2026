@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, TrendingUp, Calendar, Home, Wallet, ShieldCheck, ArrowRight, Sparkles, Layout } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const Card = ({ title, text, icon }: { title: string, text: string, icon: React.ReactNode }) => (
   <motion.div 

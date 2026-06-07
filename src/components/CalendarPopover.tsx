@@ -71,13 +71,20 @@ export default function CalendarPopover({
     return days;
   }, [year, month]);
 
+  const getLocalDateStr = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const handleDayClick = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateStr = getLocalDateStr(date); // YYYY-MM-DD
     
     if (!checkIn || (checkIn && checkOut)) {
       onDatesChange(dateStr, '');
     } else {
-      const start = new Date(checkIn);
+      const start = new Date(checkIn + 'T00:00:00');
       if (date < start) {
         onDatesChange(dateStr, '');
       } else {
@@ -91,13 +98,13 @@ export default function CalendarPopover({
   };
 
   const isSelected = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateStr(date);
     return dateStr === checkIn || dateStr === checkOut;
   };
 
   const isInRange = (date: Date) => {
     if (!checkIn || !checkOut) return false;
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateStr(date);
     return dateStr > checkIn && dateStr < checkOut;
   };
 
@@ -185,7 +192,7 @@ export default function CalendarPopover({
           const isSel = isSelected(day);
           const inRng = isInRange(day);
           const isPst = isPast(day);
-          const dateStr = day.toISOString().split('T')[0];
+          const dateStr = getLocalDateStr(day);
           const isChIn = dateStr === checkIn;
           const isChOut = dateStr === checkOut;
 

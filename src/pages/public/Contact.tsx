@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Star, MessageSquare, ExternalLink, Loader2, CheckCircle, Navigation, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useSettings } from '../contexts/SettingsContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Contact() {
   const { t, lang } = useSettings();

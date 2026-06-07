@@ -38,7 +38,7 @@ export default function BrandingStep({ localSettings, setLocalSettings }: Brandi
               type="text"
               value={localSettings.customBrandColor}
               onChange={e => setLocalSettings(prev => ({ ...prev, customBrandColor: e.target.value }))}
-              className="w-36 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-mono focus:outline-none focus:ring-1 focus:ring-brand"
+              className="w-36 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 font-mono focus:outline-none focus:ring-1 focus:ring-brand"
               placeholder="#D91F28"
             />
             <div className="flex-1 flex items-center font-sans">

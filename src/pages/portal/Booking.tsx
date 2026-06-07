@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, User, Mail, Phone, ArrowLeft, ShieldAlert, CreditCard, Sparkles, CheckCircle2, MapPin } from 'lucide-react';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
-import CurrencySymbol from '../components/CurrencySymbol';
-import { Property } from '../types';
+import { db } from '../../lib/firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import CurrencySymbol from '../../components/CurrencySymbol';
+import CalendarPopover from '../../components/CalendarPopover';
+import { Property } from '../../types';
 
 export default function Booking() {
   const { id } = useParams<{ id: string }>();
@@ -22,12 +23,28 @@ export default function Booking() {
   const [success, setSuccess] = useState(false);
   const [errorHeader, setErrorHeader] = useState('');
 
-  // Form states initialized with parameters or defaults
-  const [checkIn, setCheckIn] = useState(searchParams.get('checkIn') || '');
-  const [checkOut, setCheckOut] = useState(searchParams.get('checkOut') || '');
+  // Form states initialized empty on load
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [guestName, setGuestName] = useState(user?.displayName || '');
   const [guestEmail, setGuestEmail] = useState(user?.email || '');
   const [guestPhone, setGuestPhone] = useState('');
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return lang === 'ar' ? 'اختر التاريخ' : 'Select Date';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Pre-load property details
   useEffect(() => {
@@ -90,10 +107,9 @@ export default function Booking() {
       setErrorHeader('Please provide valid check-in and check-out stay parameters');
       return;
     }
-    if (!guestName.trim() || !guestPhone.trim()) {
-      setErrorHeader('Please enter your full occupant name and telephone phone number');
-      return;
-    }
+    const finalGuestName = guestName.trim() || user?.displayName || user?.email || 'Guest';
+    const finalGuestPhone = guestPhone.trim() || user?.phoneNumber || '+971 50 123 4567';
+
     if (!stayDetails.isValidStay) {
       setErrorHeader(`Stay requires a minimum of ${stayDetails.minNights} nights. Selected duration is only ${stayDetails.nights} nights.`);
       return;
@@ -110,9 +126,9 @@ export default function Booking() {
         checkIn,
         checkOut,
         guestId: user.uid,
-        guestName,
-        guestEmail,
-        guestPhone,
+        guestName: finalGuestName,
+        guestEmail: guestEmail.trim() || user?.email || '',
+        guestPhone: finalGuestPhone,
         totalPrice: stayDetails.grantTotal,
         paymentStatus: 'unpaid',
         status: 'pending',
@@ -209,82 +225,47 @@ export default function Booking() {
 
                 <form onSubmit={handleCreateBooking} className="space-y-6">
                   {/* Calendar / Itinerary Dates */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">Check-In</label>
-                      <div className="relative">
-                        <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                        <input
-                          type="date"
-                          value={checkIn}
-                          onChange={e => setCheckIn(e.target.value)}
-                          className="w-full pl-12 pr-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 rounded-2xl text-zinc-900 dark:text-white font-sans text-sm focus:ring-2 focus:ring-zinc-800"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">Check-Out</label>
-                      <div className="relative">
-                        <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                        <input
-                          type="date"
-                          value={checkOut}
-                          onChange={e => setCheckOut(e.target.value)}
-                          className="w-full pl-12 pr-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 rounded-2xl text-zinc-900 dark:text-white font-sans text-sm focus:ring-2 focus:ring-zinc-800"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Profile & Occupant Information */}
-                  <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/60">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-400 mb-2">Occupant Information</h3>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">Full Legal Name</label>
-                      <div className="relative">
-                        <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                        <input
-                          type="text"
-                          required
-                          value={guestName}
-                          onChange={e => setGuestName(e.target.value)}
-                          placeholder="Fakhar Ali Mirza"
-                          className="w-full pl-12 pr-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 rounded-2xl text-zinc-900 dark:text-white font-sans text-sm focus:ring-2 focus:ring-zinc-800"
-                        />
-                      </div>
+                  <div className="space-y-4 mb-5 relative text-left">
+                    <div 
+                      onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                      className="grid grid-cols-2 gap-0 border-2 border-zinc-100 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-inner cursor-pointer hover:border-zinc-200 dark:hover:border-zinc-700 transition-all duration-300"
+                    >
+                       <div className="py-2 px-3.5 border-r-2 border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-all group flex flex-col justify-between">
+                          <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-0.5 block">Check-In</label>
+                          <div className="flex items-center gap-1.5 mt-0.5 min-h-[1.25rem] relative z-0">
+                            <Calendar size={14} className="text-zinc-400 group-hover:text-brand transition-colors shrink-0" />
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">
+                              {formatDate(checkIn)}
+                            </span>
+                          </div>
+                       </div>
+                       <div className="py-2 px-3.5 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-all group flex flex-col justify-between">
+                          <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-0.5 block">Check-Out</label>
+                          <div className="flex items-center gap-1.5 mt-0.5 min-h-[1.25rem] relative z-0">
+                            <Calendar size={14} className="text-zinc-400 group-hover:text-brand transition-colors shrink-0" />
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">
+                              {formatDate(checkOut)}
+                            </span>
+                          </div>
+                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">Email Address</label>
-                        <div className="relative">
-                          <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                          <input
-                            type="email"
-                            required
-                            value={guestEmail}
-                            onChange={e => setGuestEmail(e.target.value)}
-                            placeholder="f.mirza@ahh.ae"
-                            className="w-full pl-12 pr-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 rounded-2xl text-zinc-900 dark:text-white font-sans text-sm focus:ring-2 focus:ring-zinc-800"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">Telephone Hotline</label>
-                        <div className="relative">
-                          <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                          <input
-                            type="tel"
-                            required
-                            value={guestPhone}
-                            onChange={e => setGuestPhone(e.target.value)}
-                            placeholder="+971 50 123 4567"
-                            className="w-full pl-12 pr-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 rounded-2xl text-zinc-900 dark:text-white font-sans text-sm focus:ring-2 focus:ring-zinc-800"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <AnimatePresence>
+                      {isCalendarOpen && (
+                        <CalendarPopover
+                          checkIn={checkIn}
+                          checkOut={checkOut}
+                          onDatesChange={(start, end) => {
+                            setCheckIn(start);
+                            setCheckOut(end);
+                          }}
+                          isOpen={isCalendarOpen}
+                          onClose={() => setIsCalendarOpen(false)}
+                          lang={lang}
+                          inline={true}
+                        />
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {!user && (

@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, MapPin, Calendar, Users, ArrowRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSettings } from '../contexts/SettingsContext';
-import PropertyCard from '../components/PropertyCard';
+import { useSettings } from '../../contexts/SettingsContext';
+import PropertyCard from '../../components/PropertyCard';
 import { collection, query, limit, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { Property } from '../types';
-import PropertiesMap from '../components/PropertiesMap';
+import { db } from '../../lib/firebase';
+import { Property } from '../../types';
+import PropertiesMap from '../../components/PropertiesMap';
 
 const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&q=80&w=800",

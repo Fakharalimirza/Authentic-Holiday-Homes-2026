@@ -45,9 +45,9 @@ export default function PropertyFormStep2({
         <p className="text-[11px] text-zinc-550 dark:text-zinc-400 font-sans">Provide pricing, general layout details, capacity settings, and upload listing images.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="space-y-1">
-          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Price (Dirham/Night) *</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Price (AED/Night) *</label>
           <input 
             type="number" 
             required
@@ -57,12 +57,22 @@ export default function PropertyFormStep2({
           />
         </div>
         <div className="space-y-1">
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Price (AED/Month)</label>
+          <input 
+            type="number" 
+            value={form.priceMonthly || ''}
+            onChange={e => setForm(prev => ({ ...prev, priceMonthly: Number(e.target.value) || 0 }))}
+            placeholder="Optional monthly rate"
+            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white font-sans text-xs placeholder-zinc-400 dark:placeholder-zinc-550" 
+          />
+        </div>
+        <div className="space-y-1">
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Size (sqft)</label>
           <input 
             type="number" 
             value={form.size || ''}
             onChange={e => setForm(prev => ({ ...prev, size: Number(e.target.value) }))}
-            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white font-sans text-xs" 
+            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white font-sans text-xs" 
           />
         </div>
         <div className="space-y-1">
@@ -71,7 +81,7 @@ export default function PropertyFormStep2({
             type="number" 
             value={form.minimumNights || ''}
             onChange={e => setForm(prev => ({ ...prev, minimumNights: Number(e.target.value) }))}
-            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white font-sans text-xs" 
+            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white font-sans text-xs" 
           />
         </div>
       </div>

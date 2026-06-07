@@ -22,7 +22,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
             type="text"
             value={localSettings.companyName || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, companyName: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. Authentic Holiday Homes LLC"
           />
         </div>
@@ -33,7 +33,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
             type="text"
             value={localSettings.trn || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, trn: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. 100234567890003"
           />
         </div>
@@ -44,7 +44,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
             type="text"
             value={localSettings.licenseNumber || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, licenseNumber: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. 1501234"
           />
         </div>
@@ -55,7 +55,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
             type="text"
             value={localSettings.website || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, website: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. www.authentichomes.ae"
           />
         </div>
@@ -66,7 +66,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
             type="text"
             value={localSettings.phone || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, phone: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. +971 4 123 4567"
           />
         </div>
@@ -77,7 +77,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
             type="email"
             value={localSettings.email || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, email: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
             placeholder="e.g. billing@authentichomes.ae"
           />
         </div>
@@ -87,7 +87,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
           <textarea
             value={localSettings.address || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, address: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm h-20 resize-none focus:outline-none"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 h-20 resize-none focus:outline-none"
             placeholder="HQ physical office address details"
           />
         </div>
@@ -110,7 +110,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialInstagram || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialInstagram: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://instagram.com/authenticholidayhomes"
               />
             </div>
@@ -121,7 +121,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialFacebook || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialFacebook: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://facebook.com/authenticholidayhomes"
               />
             </div>
@@ -132,7 +132,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialLinkedin || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialLinkedin: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://linkedin.com/company/authentic-holiday-homes"
               />
             </div>
@@ -143,7 +143,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialTwitter || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialTwitter: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://x.com/authenticholidayhomes"
               />
             </div>
@@ -154,7 +154,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialYoutube || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialYoutube: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://youtube.com/@authenticholidayhomes"
               />
             </div>
@@ -165,7 +165,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialTiktok || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialTiktok: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://tiktok.com/@authenticholidayhomes"
               />
             </div>
@@ -176,7 +176,7 @@ export default function CorporateStep({ localSettings, setLocalSettings }: Corpo
                 type="text"
                 value={localSettings.socialSnapchat || ''}
                 onChange={e => setLocalSettings(prev => ({ ...prev, socialSnapchat: e.target.value }))}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="e.g. https://snapchat.com/add/authenticholidayhomes"
               />
             </div>

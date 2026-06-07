@@ -25,6 +25,7 @@ export const SCHEMA_STATEMENTS = [
       description TEXT,
       location VARCHAR(255) DEFAULT '',
       price DECIMAL(10, 2) DEFAULT 0.00,
+      priceMonthly DECIMAL(10, 2) DEFAULT NULL,
       images TEXT,
       amenities TEXT,
       hostId VARCHAR(128) NOT NULL,
@@ -237,6 +238,7 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
     const colsToAdd = [
       { name: "rating", type: "DECIMAL(3,2) DEFAULT 5.00" },
       { name: "reviewCount", type: "INT DEFAULT 0" },
+      { name: "priceMonthly", type: "DECIMAL(10,2) DEFAULT NULL" },
       { name: "category", type: "VARCHAR(100) DEFAULT 'Apartment'" },
       { name: "unitNumber", type: "VARCHAR(100) DEFAULT ''" },
       { name: "buildingName", type: "VARCHAR(255) DEFAULT ''" },

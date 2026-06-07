@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSettings } from '../contexts/SettingsContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export default function Privacy() {
   const { lang } = useSettings();

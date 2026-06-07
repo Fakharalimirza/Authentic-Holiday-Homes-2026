@@ -15,16 +15,17 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
 
   await query(`
     INSERT INTO properties (
-      id, title, description, location, price, images, amenities, hostId, isAvailable, rating, reviewCount,
+      id, title, description, location, price, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount,
       category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights,
       landlordId, buildingId
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       title = VALUES(title),
       description = VALUES(description),
       location = VALUES(location),
       price = VALUES(price),
+      priceMonthly = VALUES(priceMonthly),
       images = VALUES(images),
       amenities = VALUES(amenities),
       hostId = VALUES(hostId),
@@ -50,6 +51,7 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
     prop.description || '',
     locationVal,
     prop.price || 0,
+    prop.priceMonthly || null,
     imagesJson,
     amenitiesJson,
     prop.hostId,
@@ -156,6 +158,7 @@ export async function getAllProperties(options?: { amenities?: string[] }): Prom
       description: row.description,
       location: locationObj,
       price: Number(row.price),
+      priceMonthly: row.priceMonthly ? Number(row.priceMonthly) : null,
       images: imagesObj,
       amenities: amenitiesObj,
       hostId: row.hostId,
@@ -224,6 +227,7 @@ export async function getProperty(id: string): Promise<any | null> {
     description: row.description,
     location: locationObj,
     price: Number(row.price),
+    priceMonthly: row.priceMonthly ? Number(row.priceMonthly) : null,
     images: imagesObj,
     amenities: amenitiesObj,
     hostId: row.hostId,

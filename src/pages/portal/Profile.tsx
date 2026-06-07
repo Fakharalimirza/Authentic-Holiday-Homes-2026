@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
-import { db, auth, collection, query, where, getDocs, doc, getDoc, setDoc, signOut } from '../lib/firebase';
-import PropertyCard from '../components/PropertyCard';
-import { Property } from '../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { db, auth, collection, query, where, getDocs, doc, getDoc, setDoc, signOut } from '../../lib/firebase';
+import PropertyCard from '../../components/PropertyCard';
+import { Property } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Calendar, Settings as SettingsIcon, LogOut, Star, Trash2, MessageSquare } from 'lucide-react';
-import TicketsConsole from './admin/TicketsConsole';
+import TicketsConsole from '../admin/TicketsConsole';
 
 export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'bookings' | 'wishlist' | 'settings' | 'reviews' | 'support' }) {
   const { user, profile } = useAuth();

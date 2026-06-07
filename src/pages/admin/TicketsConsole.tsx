@@ -616,7 +616,7 @@ export default function TicketsConsole({ userUid, userRole, userName, properties
                           ? 'bg-zinc-900 border border-zinc-800 text-white rounded-br-none dark:bg-white dark:text-zinc-900 dark:border-none' 
                           : 'bg-white border border-zinc-200 text-zinc-800 rounded-bl-none dark:bg-zinc-800 dark:border-zinc-700 dark:text-white'
                       }`}>
-                        <p>{reply.message}</p>
+                        <p className={isMe ? 'text-white dark:text-zinc-900' : 'text-zinc-800 dark:text-white'}>{reply.message}</p>
                       </div>
 
                       {/* Message timestamp */}

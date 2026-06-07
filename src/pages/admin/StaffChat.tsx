@@ -543,7 +543,11 @@ export default function StaffChat() {
                           </div>
                         )}
 
-                        <p className="text-xs font-semibold leading-relaxed break-words whitespace-pre-wrap">
+                        <p className={`text-xs font-semibold leading-relaxed break-words whitespace-pre-wrap ${
+                          isCurrentUser 
+                            ? 'text-white dark:text-zinc-900' 
+                            : 'text-zinc-800 dark:text-white'
+                        }`}>
                           {msg.text}
                         </p>
 
@@ -576,7 +580,11 @@ export default function StaffChat() {
                           </div>
                         )}
 
-                        <p className="text-xs font-semibold leading-relaxed break-words whitespace-pre-wrap">
+                        <p className={`text-xs font-semibold leading-relaxed break-words whitespace-pre-wrap ${
+                          isCurrentUser 
+                            ? 'text-white' 
+                            : 'text-zinc-800 dark:text-white'
+                        }`}>
                           {msg.text}
                         </p>
 

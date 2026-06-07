@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { chatCache } from '../lib/chatCache';
+import { db } from '../../lib/firebase';
+import { chatCache } from '../../lib/chatCache';
 import { Send, User as UserIcon, MessageSquare, Search, ShieldCheck, ChevronLeft, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -288,7 +288,9 @@ export default function Chat() {
                       ? 'bg-brand text-white rounded-br-none shadow-sm' 
                       : 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-none shadow-xs border border-zinc-100 dark:border-zinc-700'
                   }`}>
-                    <p className="text-xs font-semibold leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>
+                    <p className={`text-xs font-semibold leading-relaxed break-words whitespace-pre-wrap ${
+                      isCurrentUser ? 'text-white' : 'text-zinc-900 dark:text-white'
+                    }`}>{msg.text}</p>
                     <div className={`flex items-center gap-1 mt-1.5 justify-end ${
                       isCurrentUser ? 'text-white/60' : 'text-zinc-400'
                     }`}>

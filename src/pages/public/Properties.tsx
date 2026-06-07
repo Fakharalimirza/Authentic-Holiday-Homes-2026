@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, MapPin, X, Star, LayoutGrid, List, Navigation, Crosshair, ArrowUpDown, Check, Plus } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
-import { useGlobalSettings } from '../contexts/GlobalSettingsContext';
-import PropertyCard from '../components/PropertyCard';
+import { useSettings } from '../../contexts/SettingsContext';
+import { useGlobalSettings } from '../../contexts/GlobalSettingsContext';
+import PropertyCard from '../../components/PropertyCard';
 import { collection, query, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { Property } from '../types';
-import { useUserLocation } from '../hooks/useUserLocation';
+import { db } from '../../lib/firebase';
+import { Property } from '../../types';
+import { useUserLocation } from '../../hooks/useUserLocation';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the earth in km
@@ -452,11 +452,21 @@ export default function Properties() {
                           </div>
                        </div>
                        <div className="flex items-end justify-between mt-8 pt-8 border-t border-zinc-50 dark:border-zinc-950">
-                          <div>
-                             <p className="text-zinc-400 text-[10px] uppercase font-black tracking-widest mb-1">Starting from</p>
-                             <p className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter flex items-baseline gap-1.5">
-                               {property.price} <span className="text-xs text-zinc-400 tracking-normal uppercase">AED / {property.purpose === 'For Rent' ? 'Mo' : 'Total'}</span>
-                             </p>
+                          <div className="flex flex-wrap items-baseline gap-6">
+                             <div>
+                                <p className="text-zinc-400 text-[10px] uppercase font-black tracking-widest mb-1">Nightly Rate</p>
+                                <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter flex items-baseline gap-1">
+                                  {property.price} <span className="text-xs text-zinc-400 tracking-normal uppercase font-bold">AED</span>
+                                </p>
+                             </div>
+                             {property.priceMonthly ? (
+                               <div className="border-l border-zinc-200 dark:border-zinc-800 pl-6">
+                                  <p className="text-zinc-400 text-[10px] uppercase font-black tracking-widest mb-1">Monthly Rate</p>
+                                  <p className="text-3xl font-black text-zinc-600 dark:text-zinc-300 tracking-tighter flex items-baseline gap-1">
+                                    {property.priceMonthly} <span className="text-xs text-zinc-400 tracking-normal uppercase font-bold">AED</span>
+                                  </p>
+                               </div>
+                             ) : null}
                           </div>
                           <Link to={`/property/${property.id}`} className="px-10 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:scale-105 active:scale-95 transition-all">Details</Link>
                        </div>

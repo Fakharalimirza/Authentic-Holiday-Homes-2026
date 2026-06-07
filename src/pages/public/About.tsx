@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Quote, ShieldCheck, Heart, Sparkles } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const TeamCard = ({ name, role, image, small = false }: { name: string, role: string, image: string, small?: boolean }) => (
   <div className={`${small ? 'w-[200px]' : 'w-[280px]'} shrink-0 p-2`}>

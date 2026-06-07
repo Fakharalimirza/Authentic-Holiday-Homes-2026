@@ -107,7 +107,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={newCategory}
               onChange={e => setNewCategory(e.target.value)}
-              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="Add e.g. Studio, Loft, Chalet..."
             />
             <button
@@ -144,7 +144,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={newArea}
               onChange={e => setNewArea(e.target.value)}
-              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="Add e.g. Jumeirah Heights, Sufouh..."
             />
             <button
@@ -181,7 +181,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={newAmenity}
               onChange={e => setNewAmenity(e.target.value)}
-              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="Add e.g. EV Charger, Private Elevator..."
             />
             <button
@@ -218,7 +218,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={newFurnishing}
               onChange={e => setNewFurnishing(e.target.value)}
-              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="Add e.g. Fully Furnished, Unfurnished, Semi-Furnished..."
             />
             <button
@@ -261,7 +261,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={gasName}
               onChange={e => setGasName(e.target.value)}
-              className="px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="Company name e.g. Lootah Gas"
             />
             <div className="flex gap-2">
@@ -269,7 +269,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
                 type="text"
                 value={gasContact}
                 onChange={e => setGasContact(e.target.value)}
-                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="Contact standard e.g. 800 566824"
               />
               <button
@@ -307,7 +307,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={coolingName}
               onChange={e => setCoolingName(e.target.value)}
-              className="px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="Airco company e.g. Empower"
             />
             <div className="flex gap-2">
@@ -315,7 +315,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
                 type="text"
                 value={coolingContact}
                 onChange={e => setCoolingContact(e.target.value)}
-                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="Support dispatch e.g. 800 3676937"
               />
               <button
@@ -353,7 +353,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
               type="text"
               value={internetName}
               onChange={e => setInternetName(e.target.value)}
-              className="px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+              className="px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
               placeholder="e.g. du, Etisalat"
             />
             <div className="flex gap-2">
@@ -361,7 +361,7 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
                 type="text"
                 value={internetContact}
                 onChange={e => setInternetContact(e.target.value)}
-                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none"
+                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
                 placeholder="Helpline e.g. 101, 800 155"
               />
               <button

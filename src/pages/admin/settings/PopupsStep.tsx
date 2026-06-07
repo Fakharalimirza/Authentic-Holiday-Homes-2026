@@ -61,11 +61,11 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
             <select
               value={localSettings.popupContentType || 'both'}
               onChange={e => setLocalSettings(prev => ({ ...prev, popupContentType: e.target.value as any }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-brand"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand"
             >
-              <option value="text">📄 Text Headline & Body Only</option>
-              <option value="image">🖼️ Large Image / Banner Only</option>
-              <option value="both">🎨 Combo (Text, Body, and Banner)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="text">📄 Text Headline & Body Only</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="image">🖼️ Large Image / Banner Only</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="both">🎨 Combo (Text, Body, and Banner)</option>
             </select>
           </div>
 
@@ -76,7 +76,7 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
               required={!!localSettings.popupEnabled && localSettings.popupContentType === 'image'}
               value={localSettings.popupImageUrl || ''}
               onChange={e => setLocalSettings(prev => ({ ...prev, popupImageUrl: e.target.value }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-brand"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand"
               placeholder="e.g. https://images.unsplash.com/... or /banner.png"
             />
           </div>
@@ -91,7 +91,7 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
               required={!!localSettings.popupEnabled}
               value={localSettings.popupTitle || ''}
               onChange={e => setLocalSettings(prev => ({ ...prev, popupTitle: e.target.value }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-brand"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand"
               placeholder="e.g. Ramadan Mubarak from Authentic Homes"
             />
           </div>
@@ -106,7 +106,7 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
               required={!!localSettings.popupEnabled}
               value={localSettings.popupMessage || ''}
               onChange={e => setLocalSettings(prev => ({ ...prev, popupMessage: e.target.value }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-brand leading-relaxed"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand leading-relaxed animate-none"
               placeholder="Provide greeting messages, sales terms, rules, code counts, booking offers..."
             />
           </div>
@@ -119,14 +119,14 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
             <select
               value={localSettings.popupTheme || 'gold'}
               onChange={e => setLocalSettings(prev => ({ ...prev, popupTheme: e.target.value as any }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-200 focus:outline-none"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white focus:outline-none"
             >
-              <option value="gold">🕌 Downtown Gold (Luxury Greeting)</option>
-              <option value="red">🔴 Corporate Ruby (Flash Sales / Offers)</option>
-              <option value="navy">🔵 Burj Navy (Corporate Alerts)</option>
-              <option value="emerald">🟢 Oasis Emerald (Green / Wellness Events)</option>
-              <option value="minimal">⚪ Elegant Minimalist (Clean Gray)</option>
-              <option value="celebration">✨ Celebration Sparkle (Party / New Year / Eid)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="gold">🕌 Downtown Gold (Luxury Greeting)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="red">🔴 Corporate Ruby (Flash Sales / Offers)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="navy">🔵 Burj Navy (Corporate Alerts)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="emerald">🟢 Oasis Emerald (Green / Wellness Events)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="minimal">⚪ Elegant Minimalist (Clean Gray)</option>
+              <option className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" value="celebration">✨ Celebration Sparkle (Party / New Year / Eid)</option>
             </select>
           </div>
 
@@ -137,7 +137,7 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
               type="text"
               value={localSettings.popupActionUrl || ''}
               onChange={e => setLocalSettings(prev => ({ ...prev, popupActionUrl: e.target.value }))}
-              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-brand"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand"
               placeholder="e.g. /properties or external url"
             />
           </div>
@@ -150,7 +150,7 @@ export default function PopupsStep({ localSettings, setLocalSettings }: PopupsSt
             type="text"
             value={localSettings.popupActionText || ''}
             onChange={e => setLocalSettings(prev => ({ ...prev, popupActionText: e.target.value }))}
-            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-805 rounded-2xl text-xs font-bold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-brand"
+            className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-805 rounded-2xl text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand"
             placeholder="e.g. Explore Offers Now"
           />
         </div>

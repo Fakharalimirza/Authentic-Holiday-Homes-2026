@@ -14,6 +14,7 @@ export interface PropertyForm {
   category: string;
   description: string;
   price: number;
+  priceMonthly?: number;
   unitNumber: string;
   buildingName: string;
   referenceNo: string;
@@ -55,6 +56,7 @@ export const getInitialForm = (): PropertyForm => ({
   category: 'Apartment',
   description: '',
   price: 0,
+  priceMonthly: 0,
   unitNumber: '',
   buildingName: '',
   referenceNo: `AHH-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,

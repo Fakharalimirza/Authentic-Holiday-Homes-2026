@@ -321,11 +321,12 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
         const existing = tableData.find(row => row.id === params[0]);
         if (existing) existing.isDeleted = 1;
       } else {
-        const [id, title, description, location, price, images, amenities, hostId, isAvailable, rating, reviewCount, category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights, landlordId, buildingId] = params;
+        const [id, title, description, location, price, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount, category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights, landlordId, buildingId] = params;
         
         const propRecord = {
           id, title, description, location,
           price: Number(price || 0),
+          priceMonthly: priceMonthly ? Number(priceMonthly) : null,
           images: typeof images === "string" ? JSON.parse(images) : (images || {}),
           amenities: typeof amenities === "string" ? JSON.parse(amenities) : (amenities || {}),
           hostId,

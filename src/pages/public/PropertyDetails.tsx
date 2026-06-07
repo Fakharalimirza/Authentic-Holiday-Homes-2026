@@ -5,21 +5,23 @@ import {
   Star, MapPin, Users, Bed, Bath, Wifi, Coffee, Wind, Shield, ChevronLeft, 
   Heart, Share2, Sparkles, Maximize, Calendar, Hash, Building2, Layout, Sofa, 
   X, Check, Zap, Car, ArrowUpDown, Dumbbell, Flame, Trash2, Wrench, Briefcase, 
-  Eye, Tv, Clock, Dog, Key, Trees, DoorOpen, Waves, Smile, Home, Info
+  Eye, Tv, Clock, Dog, Key, Trees, DoorOpen, Waves, Smile, Home, Info,
+  ChevronDown, ChevronUp, Search
 } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, 
   addDoc, getDocs, query, orderBy, serverTimestamp, runTransaction,
   deleteDoc
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import PropertyMap from '../components/Map';
-import CurrencySymbol from '../components/CurrencySymbol';
-import ImageCarousel from '../components/ImageCarousel';
-import CalendarPopover from '../components/CalendarPopover';
-import { Property } from '../types';
+import { db } from '../../lib/firebase';
+import PropertyMap from '../../components/Map';
+import CurrencySymbol from '../../components/CurrencySymbol';
+import ImageCarousel from '../../components/ImageCarousel';
+import CalendarPopover from '../../components/CalendarPopover';
+import { Property } from '../../types';
+import { FormattedText } from '../../components/RichTextEditor';
 
 function getAmenityIcon(item: string) {
   const norm = item.toLowerCase();
@@ -84,6 +86,8 @@ export default function PropertyDetails() {
   const [description, setDescription] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isAmenitiesModalOpen, setIsAmenitiesModalOpen] = useState(false);
+  const [amenitySearchQuery, setAmenitySearchQuery] = useState('');
 
   // Review states
   const [reviews, setReviews] = useState<any[]>([]);
@@ -166,6 +170,18 @@ export default function PropertyDetails() {
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
+
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (isAmenitiesModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isAmenitiesModalOpen]);
 
   const toggleFavorite = async () => {
     if (!id || !property) return;
@@ -412,27 +428,61 @@ export default function PropertyDetails() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 pb-20">
-      <div className="py-6 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-          <ChevronLeft />
-        </button>
-        <div className="flex gap-4">
+      <div className="py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 mb-6">
+        <div className="flex items-center gap-3">
           <button 
-            onClick={handleShare}
-            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-805 rounded-full transition-all hover:scale-110 active:scale-95 text-zinc-650 dark:text-zinc-300"
+            type="button"
+            onClick={() => navigate(-1)} 
+            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-all text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white cursor-pointer group"
           >
-            <Share2 size={20} />
+            <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span className="text-[10px] uppercase tracking-widest font-black leading-none mt-0.5">
+              {lang === 'ar' ? 'الرجوع للعقارات' : 'Back to stays'}
+            </span>
           </button>
-          <button 
-            onClick={toggleFavorite}
-            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-850 rounded-full transition-all hover:scale-110 active:scale-95"
-          >
-            <Heart 
-              size={20} 
-              fill={isFavorite ? "#EF4444" : "none"} 
-              className={isFavorite ? "text-red-500" : "text-zinc-650 dark:text-zinc-300"} 
-            />
-          </button>
+
+          <span className="h-4 w-[1px] bg-zinc-200 dark:bg-zinc-800 hidden md:inline-block" />
+
+          {/* Breadcrumb line */}
+          <div className="hidden md:flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-zinc-400 dark:text-zinc-500">
+            <span>Home</span>
+            <span className="text-[8px] font-bold text-zinc-300 dark:text-zinc-700">/</span>
+            <span>{property.category}</span>
+            <span className="text-[8px] font-bold text-zinc-300 dark:text-zinc-700">/</span>
+            <span className="text-zinc-650 dark:text-zinc-300">
+              {property.location.city || property.location.address.split(',').slice(-1)[0]?.trim() || 'Dubai'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+          {property.referenceNo && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-805 text-[9px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider">
+              {lang === 'ar' ? 'مرجع:' : 'Ref:'} #{property.referenceNo}
+            </span>
+          )}
+          <div className="flex gap-2">
+            <button 
+              type="button"
+              onClick={handleShare}
+              className="p-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-650 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:border-zinc-150 dark:hover:border-zinc-800 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
+              title="Share Page"
+            >
+              <Share2 size={16} />
+            </button>
+            <button 
+              type="button"
+              onClick={toggleFavorite}
+              className="p-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-650 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:border-zinc-150 dark:hover:border-zinc-800 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
+              title="Save to Wishlist"
+            >
+              <Heart 
+                size={16} 
+                fill={isFavorite ? "#EF4444" : "none"} 
+                className={isFavorite ? "text-red-500" : "text-zinc-650 dark:text-zinc-300"} 
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -539,20 +589,8 @@ export default function PropertyDetails() {
                 <p className="font-bold flex items-center gap-2"><Sofa size={14} className="text-zinc-300" /> {property.furnishing}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Reference No.</p>
-                <p className="font-bold flex items-center gap-2"><Hash size={14} className="text-zinc-300" /> {property.referenceNo}</p>
-              </div>
-              <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Building</p>
                 <p className="font-bold flex items-center gap-2"><Building2 size={14} className="text-zinc-300" /> {property.buildingName}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Unit</p>
-                <p className="font-bold">{property.unitNumber}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Added on</p>
-                <p className="font-bold">{property.createdAt?.toDate ? property.createdAt.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '9 May 2026'}</p>
               </div>
             </div>
           </div>
@@ -561,32 +599,186 @@ export default function PropertyDetails() {
             <div className="flex items-center justify-between mb-6 border-b border-zinc-100 dark:border-zinc-850 pb-2">
               <h2 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">{t('description')}</h2>
             </div>
-            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-lg font-medium opacity-90">
-              {description}
-            </p>
+            <div className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-base font-medium opacity-95">
+              <FormattedText text={description} />
+            </div>
           </div>
 
           <div className="mb-16">
-             <h2 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-8">Features / Amenities</h2>
-             <div className="space-y-8">
-                {Object.entries(property.amenities || {}).map(([category, items]) => (
-                  (items as string[]).length > 0 && (
-                    <div key={category} className="space-y-3">
-                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 border-b border-zinc-100/80 dark:border-zinc-850 pb-1.5">{category.replace(/([A-Z])/g, ' $1')}</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
-                        {(items as string[]).map((item: string) => (
-                          <div key={item} className="flex items-center gap-2.5 p-2 px-3 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-xl group hover:bg-white dark:hover:bg-zinc-900/80 shadow-sm transition-all border border-transparent hover:border-zinc-100 dark:hover:border-zinc-805">
-                             <div className="p-1.5 bg-white dark:bg-zinc-950 rounded-lg shadow-sm group-hover:scale-105 transition-transform shrink-0 flex items-center justify-center">
-                               {getAmenityIcon(item)}
-                             </div>
-                             <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-tight truncate" title={item}>{item}</span>
-                          </div>
-                        ))}
+            <div className="flex items-center justify-between mb-8 border-b border-zinc-100 dark:border-zinc-850 pb-2.5">
+              <div>
+                <h2 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">Features & Amenities</h2>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold font-sans mt-0.5">Premium comfort options inside your stay</p>
+              </div>
+            </div>
+
+            {/* Premium, ultra-clean compact list without heavy cards or filters */}
+            {property.amenities && (() => {
+              const amenities = property.amenities as Record<string, string[]>;
+              const allAmenities: { name: string; category: string }[] = [];
+              Object.entries(amenities).forEach(([cat, items]) => {
+                if (Array.isArray(items)) {
+                  items.forEach((item: string) => {
+                    allAmenities.push({ name: item, category: cat });
+                  });
+                }
+              });
+
+              if (allAmenities.length === 0) {
+                return (
+                  <p className="text-zinc-400 italic text-xs font-semibold">No specific amenities declared.</p>
+                );
+              }
+
+              // Display up to 8 key amenities on-page
+              const maxOnPage = 8;
+              const displayList = allAmenities.slice(0, maxOnPage);
+
+              // Filtered list inside the modal based on search query
+              let filteredModalCategories: [string, string[]][] = [];
+              if (isAmenitiesModalOpen) {
+                filteredModalCategories = Object.entries(amenities).map(([category, items]) => {
+                  const matchedItems = items.filter((item: string) =>
+                    item.toLowerCase().includes(amenitySearchQuery.toLowerCase())
+                  );
+                  return [category, matchedItems] as [string, string[]];
+                }).filter(([_, items]) => items.length > 0);
+              }
+
+              return (
+                <div>
+                  {/* Clean standard list layout without heavy card boundaries */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1">
+                    {displayList.map((item, idx) => (
+                      <div key={`${item.name}-${idx}`} className="flex items-center gap-4 py-3.5 border-b border-zinc-100/50 dark:border-zinc-900/40 last:border-0 md:even:border-b">
+                        <div className="flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-805">
+                          {getAmenityIcon(item.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-zinc-850 dark:text-zinc-200">
+                            {item.name}
+                          </p>
+                          <span className="block text-[8px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider">
+                            {item.category.replace(/([A-Z])/g, ' $1').trim()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )
-                ))}
-             </div>
+                    ))}
+                  </div>
+
+                  {allAmenities.length > maxOnPage && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAmenitiesModalOpen(true)}
+                      className="mt-8 px-6 py-3.5 bg-white dark:bg-zinc-950 border border-zinc-905 dark:border-zinc-300 font-bold uppercase text-[10px] tracking-widest text-zinc-900 dark:text-white rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:border-zinc-950 dark:hover:border-white transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-3xs"
+                    >
+                      Show all {allAmenities.length} amenities
+                    </button>
+                  )}
+
+                  {/* Accessible Airbnb-style Detailed Modal */}
+                  <AnimatePresence>
+                    {isAmenitiesModalOpen && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        {/* Overlay Backdrop */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          onClick={() => {
+                            setIsAmenitiesModalOpen(false);
+                            setAmenitySearchQuery('');
+                          }}
+                          className="absolute inset-0 bg-zinc-950/60 backdrop-blur-md"
+                        />
+
+                        {/* Modal Panel */}
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                          className="relative bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 w-full max-w-2xl max-h-[80vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col z-10"
+                        >
+                          {/* Main Modal Header */}
+                          <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-100 dark:border-zinc-850 shrink-0">
+                            <div>
+                              <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">What this place offers</h3>
+                              <p className="text-[9px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold font-sans mt-0.5">Categorized catalog of accommodations</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAmenitiesModalOpen(false);
+                                setAmenitySearchQuery('');
+                              }}
+                              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors cursor-pointer border border-zinc-100 dark:border-zinc-850"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+
+                          {/* Search Area */}
+                          <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-900/10 shrink-0">
+                            <div className="relative">
+                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+                              <input
+                                type="text"
+                                placeholder="Search amenities (e.g. WiFi, Pool, Gym...)"
+                                value={amenitySearchQuery}
+                                onChange={(e) => setAmenitySearchQuery(e.target.value)}
+                                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-805 rounded-xl pl-11 pr-16 py-3 text-[11px] font-bold uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white"
+                              />
+                              {amenitySearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setAmenitySearchQuery('')}
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] uppercase font-black tracking-widest text-zinc-400 hover:text-zinc-800 dark:hover:text-white cursor-pointer"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Scrollable Categories & Amenities List */}
+                          <div className="p-6 overflow-y-auto space-y-8 custom-scrollbar">
+                            {filteredModalCategories.length === 0 ? (
+                              <div className="text-center py-12">
+                                <p className="text-sm text-zinc-400 font-medium italic">No matches found for "{amenitySearchQuery}"</p>
+                              </div>
+                            ) : (
+                              filteredModalCategories.map(([category, items]) => {
+                                const displayName = category.replace(/([A-Z])/g, ' $1').trim();
+                                return (
+                                  <div key={category} className="space-y-4">
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-850 pb-2">
+                                      {displayName}
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      {items.map((item: string) => (
+                                        <div key={item} className="flex items-center gap-3 py-1 bg-transparent group">
+                                          <div className="flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                                            {getAmenityIcon(item)}
+                                          </div>
+                                          <p className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-300">
+                                            {item}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </motion.div>
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="mb-12">
@@ -755,31 +947,38 @@ export default function PropertyDetails() {
                  <div className="text-4xl font-black text-zinc-900 dark:text-white flex items-center gap-1.5 tracking-tight">
                    <CurrencySymbol size="0.8em" className="text-brand" />
                    {property.price}
-                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest ml-1">{property.purpose === 'For Rent' ? t('monthly') : ''}</span>
+                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest ml-1">/night</span>
                  </div>
+                 {property.priceMonthly ? (
+                   <div className="text-lg font-black text-zinc-500 dark:text-zinc-400 flex items-center gap-1 tracking-tight mt-1.5">
+                     <CurrencySymbol size="0.8em" className="text-zinc-400" />
+                     {property.priceMonthly}
+                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">/month</span>
+                   </div>
+                 ) : null}
                </div>
                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-50 dark:bg-zinc-900 rounded-full"><Star size={14} className="fill-yellow-400 text-yellow-400 border-none" /> <span className="text-xs font-black">{property.rating || '5.0'}</span></div>
              </div>
              
-             <div className="space-y-4 mb-10 relative">
+             <div className="space-y-4 mb-5 relative">
                 <div 
                   onClick={() => setIsCalendarOpen(!isCalendarOpen)}
                   className="grid grid-cols-2 gap-0 border-2 border-zinc-100 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-inner cursor-pointer hover:border-zinc-200 dark:hover:border-zinc-700 transition-all duration-300"
                 >
-                   <div className="p-5 border-r-2 border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-all group flex flex-col justify-between">
-                      <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-1 block">{lang === 'ar' ? 'تاريخ الدخول' : 'Check-In'}</label>
-                      <div className="flex items-center gap-1.5 mt-1 min-h-[1.5rem] relative z-0">
+                   <div className="py-2 px-3.5 border-r-2 border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-all group flex flex-col justify-between">
+                      <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-0.5 block">{lang === 'ar' ? 'تاريخ الدخول' : 'Check-In'}</label>
+                      <div className="flex items-center gap-1.5 mt-0.5 min-h-[1.25rem] relative z-0">
                         <Calendar size={14} className="text-zinc-400 group-hover:text-brand transition-colors shrink-0" />
-                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight font-mono">
                           {formatDate(checkIn)}
                         </span>
                       </div>
                    </div>
-                   <div className="p-5 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-all group flex flex-col justify-between">
-                      <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-1 block">{lang === 'ar' ? 'تاريخ الخروج' : 'Check-Out'}</label>
-                      <div className="flex items-center gap-1.5 mt-1 min-h-[1.5rem] relative z-0">
+                   <div className="py-2 px-3.5 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-all group flex flex-col justify-between">
+                      <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-0.5 block">{lang === 'ar' ? 'تاريخ الخروج' : 'Check-Out'}</label>
+                      <div className="flex items-center gap-1.5 mt-0.5 min-h-[1.25rem] relative z-0">
                         <Calendar size={14} className="text-zinc-400 group-hover:text-brand transition-colors shrink-0" />
-                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight font-mono">
                           {formatDate(checkOut)}
                         </span>
                       </div>
@@ -802,13 +1001,6 @@ export default function PropertyDetails() {
                     />
                   )}
                 </AnimatePresence>
-
-                <div className="p-5 border-2 border-zinc-100 dark:border-zinc-800 rounded-3xl shadow-inner hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors">
-                   <label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-1 block">Occupants</label>
-                   <select className="block w-full text-sm font-bold bg-transparent border-none p-0 focus:ring-0 cursor-pointer uppercase tracking-tight">
-                      {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {lang === 'ar' ? 'ضيوف' : (n>1?'People':'Person')}</option>)}
-                   </select>
-                </div>
              </div>
 
              {/* Real-time Stay duration & Minimum Nights check */}
@@ -830,7 +1022,10 @@ export default function PropertyDetails() {
                    <div>
                      {isLongEnough ? (
                        <span>
-                         Selected: <strong className="font-extrabold">{diffNights} nights</strong>. Estimated Price: <strong className="font-extrabold"><CurrencySymbol />{Math.round(diffNights * property.price)}</strong>
+                         <div className="flex flex-col gap-1">
+                            <span>Selected: <strong className="font-extrabold">{diffNights} nights</strong></span>
+                            <span>Estimated Price: <strong className="font-extrabold"><CurrencySymbol />{Math.round(diffNights * property.price)}</strong></span>
+                          </div>
                        </span>
                      ) : (
                        <span>
