@@ -14,17 +14,18 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
   }
 
   await query(`
-    INSERT INTO properties (
-      id, title, description, location, price, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount,
+    INSERT INTO listings (
+      id, title, description, location, price, priceDaily, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount,
       category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights,
       landlordId, buildingId
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       title = VALUES(title),
       description = VALUES(description),
       location = VALUES(location),
       price = VALUES(price),
+      priceDaily = VALUES(priceDaily),
       priceMonthly = VALUES(priceMonthly),
       images = VALUES(images),
       amenities = VALUES(amenities),
@@ -51,6 +52,7 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
     prop.description || '',
     locationVal,
     prop.price || 0,
+    prop.price || 0, // priceDaily mapped from prop.price
     prop.priceMonthly || null,
     imagesJson,
     amenitiesJson,
@@ -102,7 +104,7 @@ export async function getAllProperties(options?: { amenities?: string[] }): Prom
     const placeholders = options.amenities.map(() => '?').join(',');
     const sql = `
       SELECT p.* 
-      FROM properties p
+      FROM listings p
       INNER JOIN (
         SELECT propertyId 
         FROM property_amenities 
@@ -116,7 +118,7 @@ export async function getAllProperties(options?: { amenities?: string[] }): Prom
     const params = [...options.amenities, options.amenities.length];
     rows = await query(sql, params);
   } else {
-    rows = await query("SELECT * FROM properties WHERE isDeleted = 0 OR isDeleted IS NULL ORDER BY createdAt DESC");
+    rows = await query("SELECT * FROM listings WHERE isDeleted = 0 OR isDeleted IS NULL ORDER BY createdAt DESC");
   }
   return rows.map((row: any) => {
     let locationObj = row.location;
@@ -184,7 +186,7 @@ export async function getAllProperties(options?: { amenities?: string[] }): Prom
 }
 
 export async function getProperty(id: string): Promise<any | null> {
-  const rows = await query("SELECT * FROM properties WHERE id = ?", [id]);
+  const rows = await query("SELECT * FROM listings WHERE id = ?", [id]);
   if (!rows || rows.length === 0) return null;
   const row = rows[0];
 
@@ -271,7 +273,7 @@ export async function deleteProperty(id: string): Promise<void> {
   }
 
   // 2. Perform DB soft delete
-  await query("UPDATE properties SET isDeleted = 1 WHERE id = ?", [id]);
+  await query("UPDATE listings SET isDeleted = 1 WHERE id = ?", [id]);
 }
 
 // --- PROPERTY REVIEWS SECTION ---

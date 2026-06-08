@@ -19,12 +19,13 @@ export const SCHEMA_STATEMENTS = [
       wishlist TEXT,
       dob VARCHAR(50) DEFAULT NULL
   )`,
-  `CREATE TABLE IF NOT EXISTS properties (
+  `CREATE TABLE IF NOT EXISTS listings (
       id VARCHAR(128) PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       description TEXT,
       location VARCHAR(255) DEFAULT '',
       price DECIMAL(10, 2) DEFAULT 0.00,
+      priceDaily DECIMAL(10, 2) DEFAULT 0.00,
       priceMonthly DECIMAL(10, 2) DEFAULT NULL,
       images TEXT,
       amenities TEXT,
@@ -224,6 +225,20 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
   isInitializing = true;
   console.log("[MySQL Auto-Init] Initializing schemas verification...");
   try {
+    // Dynamic schema table renaming helper
+    try {
+      const [listingsTable]: any = await p.query("SHOW TABLES LIKE 'listings'");
+      if (!listingsTable || listingsTable.length === 0) {
+        const [propertiesTable]: any = await p.query("SHOW TABLES LIKE 'properties'");
+        if (propertiesTable && propertiesTable.length > 0) {
+          console.log("[MySQL Auto-Init] Renaming table 'properties' to 'listings' dynamically...");
+          await p.query("RENAME TABLE properties TO listings");
+        }
+      }
+    } catch (e) {
+      console.warn("[MySQL Auto-Init] Dynamic table renaming warning:", e);
+    }
+
     for (const stmt of SCHEMA_STATEMENTS) {
       try {
         await p.query(stmt);
@@ -234,11 +249,12 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
         }
       }
     }
-    // Alter schema safety to ensure all modern properties table columns exist in cPanel MySQL
+    // Alter schema safety to ensure all modern listings table columns exist in cPanel MySQL
     const colsToAdd = [
       { name: "rating", type: "DECIMAL(3,2) DEFAULT 5.00" },
       { name: "reviewCount", type: "INT DEFAULT 0" },
       { name: "priceMonthly", type: "DECIMAL(10,2) DEFAULT NULL" },
+      { name: "priceDaily", type: "DECIMAL(10,2) DEFAULT 0.00" },
       { name: "category", type: "VARCHAR(100) DEFAULT 'Apartment'" },
       { name: "unitNumber", type: "VARCHAR(100) DEFAULT ''" },
       { name: "buildingName", type: "VARCHAR(255) DEFAULT ''" },
@@ -257,7 +273,7 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
     ];
     for (const col of colsToAdd) {
       try {
-        await p.query(`ALTER TABLE properties ADD COLUMN ${col.name} ${col.type}`);
+        await p.query(`ALTER TABLE listings ADD COLUMN ${col.name} ${col.type}`);
       } catch (e) {}
     }
     // Alter schema safety for secured_documents modern columns & isDeleted soft delete column
@@ -273,8 +289,13 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
       } catch (e) {}
     }
     try {
-      await p.query("ALTER TABLE properties MODIFY COLUMN location TEXT");
+      await p.query("ALTER TABLE listings MODIFY COLUMN location TEXT");
     } catch(e){}
+
+    // Update missing or zero priceDaily columns from the existing price column
+    try {
+      await p.query("UPDATE listings SET priceDaily = price WHERE priceDaily IS NULL OR priceDaily = 0");
+    } catch (e) {}
 
     // Alter schema safety for buildings modern columns
     const bldColsToAdd = [
@@ -324,7 +345,7 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
       const count = (existingRows as any)?.[0]?.count || 0;
       if (count === 0) {
         console.log("[MySQL Auto-Init] Migrating existing property amenities into normalized property_amenities table...");
-        const [propRows] = await p.query("SELECT id, amenities FROM properties");
+        const [propRows] = await p.query("SELECT id, amenities FROM listings");
         if (Array.isArray(propRows)) {
           for (const row of propRows as any[]) {
             if (row.amenities) {

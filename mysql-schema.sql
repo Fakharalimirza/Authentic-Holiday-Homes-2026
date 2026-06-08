@@ -12,17 +12,21 @@ CREATE TABLE IF NOT EXISTS users (
     wishlist TEXT -- Stored as comma-separated IDs or JSON string
 );
 
--- 2. Properties Table
-CREATE TABLE IF NOT EXISTS properties (
+-- 2. Listings Table
+CREATE TABLE IF NOT EXISTS listings (
     id VARCHAR(128) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     location VARCHAR(255) DEFAULT '',
     price DECIMAL(10, 2) DEFAULT 0.00,
+    priceDaily DECIMAL(10, 2) DEFAULT 0.00,
+    priceMonthly DECIMAL(10, 2) DEFAULT NULL,
     images TEXT, -- JSON array string of imageUrls
     amenities TEXT, -- JSON array string of amenities
     hostId VARCHAR(128) NOT NULL,
     isAvailable TINYINT(1) DEFAULT 1,
+    rating DECIMAL(3, 2) DEFAULT 5.00,
+    reviewCount INT DEFAULT 0,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
