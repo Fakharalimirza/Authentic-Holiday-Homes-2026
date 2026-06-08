@@ -217,6 +217,21 @@ export const SCHEMA_STATEMENTS = [
       body TEXT NOT NULL,
       variables VARCHAR(255) DEFAULT '',
       updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS portal_leads (
+      id VARCHAR(128) PRIMARY KEY,
+      source VARCHAR(50) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      date_time TIMESTAMP NULL DEFAULT NULL,
+      listing_id VARCHAR(128) DEFAULT '',
+      listing_reference VARCHAR(128) DEFAULT '',
+      inquirer_name VARCHAR(255) DEFAULT '',
+      inquirer_cell VARCHAR(100) DEFAULT '',
+      inquirer_email VARCHAR(191) DEFAULT '',
+      inquirer_message TEXT,
+      views_count INT DEFAULT 0,
+      is_view_only TINYINT(1) DEFAULT 0,
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`
 ];
 

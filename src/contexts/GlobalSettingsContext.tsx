@@ -65,6 +65,15 @@ export interface AppSettings {
   socialYoutube?: string;
   socialTiktok?: string;
   socialSnapchat?: string;
+
+  // Bayut & Dubizzle Integration Settings
+  bayutEnabled?: boolean;
+  bayutApiKey?: string;
+  bayutApiUrl?: string;
+  dubizzleEnabled?: boolean;
+  dubizzleApiKey?: string;
+  dubizzleApiUrl?: string;
+  syncIntervalMinutes?: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -139,7 +148,16 @@ const DEFAULT_SETTINGS: AppSettings = {
   socialLinkedin: 'https://linkedin.com/company/authentic-holiday-homes',
   socialYoutube: 'https://youtube.com/@authenticholidayhomes',
   socialTiktok: '',
-  socialSnapchat: ''
+  socialSnapchat: '',
+
+  // Integration defaults
+  bayutEnabled: false,
+  bayutApiKey: '',
+  bayutApiUrl: 'https://www.bayut.com/api-v7/stats/website-client-leads',
+  dubizzleEnabled: false,
+  dubizzleApiKey: '',
+  dubizzleApiUrl: 'https://dubizzle.com/profolio/api-v7/stats/website-client-leads',
+  syncIntervalMinutes: 30
 };
 
 enum OperationType {

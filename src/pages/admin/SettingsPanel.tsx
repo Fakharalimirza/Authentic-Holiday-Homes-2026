@@ -11,6 +11,7 @@ import DropdownsStep from './settings/DropdownsStep';
 import BrandingStep from './settings/BrandingStep';
 import LetterheadStep from './settings/LetterheadStep';
 import PopupsStep from './settings/PopupsStep';
+import IntegrationsStep from './settings/IntegrationsStep';
 import LetterheadPreview from './settings/LetterheadPreview';
 
 export default function SettingsPanel() {
@@ -31,7 +32,8 @@ export default function SettingsPanel() {
     { id: 3, name: 'Dropdowns', label: 'Lists Dropdowns', icon: Settings, description: 'Categories, areas & options' },
     { id: 4, name: 'Branding', label: 'Branding Theme', icon: Palette, description: 'Accent and visual luxury' },
     { id: 5, name: 'Letterhead', label: 'Letterhead Print', icon: FileText, description: 'Invoice borders and templates' },
-    { id: 6, name: 'Popups', label: 'Aesthetics & Greeting Popups', icon: Megaphone, description: 'Configure active promotional alerts and greetings' }
+    { id: 6, name: 'Popups', label: 'Aesthetics & Greeting Popups', icon: Megaphone, description: 'Configure active promotional alerts and greetings' },
+    { id: 7, name: 'Portals', label: 'Leads Integration', icon: Globe, description: 'Configure Bayut & Dubizzle Pull APIs' }
   ];
   
   const [isSaving, setIsSaving] = useState(false);
@@ -69,6 +71,8 @@ export default function SettingsPanel() {
         return <LetterheadStep localSettings={localSettings} setLocalSettings={setLocalSettings} />;
       case 6:
         return <PopupsStep localSettings={localSettings} setLocalSettings={setLocalSettings} />;
+      case 7:
+        return <IntegrationsStep localSettings={localSettings} setLocalSettings={setLocalSettings} />;
       default:
         return null;
     }
@@ -238,10 +242,10 @@ export default function SettingsPanel() {
               Back
             </button>
 
-            {currentStep < 6 ? (
+            {currentStep < 7 ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep(prev => Math.min(6, prev + 1))}
+                onClick={() => setCurrentStep(prev => Math.min(7, prev + 1))}
                 className="flex items-center gap-1 px-6 py-3 text-white rounded-2xl font-bold hover:brightness-105 active:scale-98 transition-all cursor-pointer text-sm font-sans shrink-0"
                 style={{ backgroundColor: localSettings.customBrandColor }}
               >

@@ -42,7 +42,8 @@ import {
   FileSpreadsheet,
   Loader2,
   Info,
-  Mail
+  Mail,
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -72,6 +73,7 @@ import LandlordsConsole from './admin/LandlordsConsole';
 import BuildingsConsole from './admin/BuildingsConsole';
 import UnitsConsole from './admin/UnitsConsole';
 import TemplatesConsole from './admin/TemplatesConsole';
+import PortalLeadsConsole from './admin/PortalLeadsConsole';
 
 export default function Admin() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -131,6 +133,11 @@ export default function Admin() {
     // Staff Chat tab - visible to actual workspace staff roles
     if (['super_admin', 'admin', 'agent', 'maintenance', 'host'].includes(role)) {
       list.push({ id: 'staff_chat', label: 'Internal Staff Chat', icon: MessageSquare, category: 'Communications' });
+    }
+    
+    // Portal Leads Console tab
+    if (['super_admin', 'admin', 'agent', 'host'].includes(role)) {
+      list.push({ id: 'portal_leads', label: 'Portal Leads Console', icon: Globe, category: 'Communications' });
     }
     
     // Users tab
@@ -1721,6 +1728,11 @@ export default function Admin() {
               {/* TAB 13: GLOBAL SETTINGS PANEL */}
               {activeTab === 'settings' && (
                 <SettingsPanel />
+              )}
+
+              {/* TAB 13.5: PORTAL LEADS PULLED LOGS */}
+              {activeTab === 'portal_leads' && (
+                <PortalLeadsConsole />
               )}
 
               {/* TAB 14: LANDLORDS CONSOLE */}

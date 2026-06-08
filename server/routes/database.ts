@@ -537,4 +537,33 @@ router.get("/status", async (req, res) => {
   }
 });
 
+// --- PORTAL LEADS & INTEGRATION METRICS ---
+router.get("/portal/leads", async (req, res) => {
+  try {
+    const leadsList = await dbBridge.getAllPortalLeads();
+    res.json({ success: true, leads: leadsList });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/portal/leads/summary", async (req, res) => {
+  try {
+    const summaryStats = await dbBridge.getPortalLeadsSummary();
+    res.json({ success: true, summary: summaryStats });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/portal/leads/sync", async (req, res) => {
+  try {
+    const { executePortalLeadsSync } = await import("../services/leadsScheduler");
+    await executePortalLeadsSync();
+    res.json({ success: true, message: "Manual synchronization cycle executed successfully." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

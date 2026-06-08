@@ -10,3 +10,4 @@ export * from './documents';
 export * from './landlords';
 export * from './meta';
 export * from './units';
+export * from './portal_leads';
