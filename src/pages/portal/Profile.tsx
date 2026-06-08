@@ -81,9 +81,16 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
       try {
         // Fetch Wishlist
         if (profile.wishlist && profile.wishlist.length > 0) {
-          const propertyPromises = profile.wishlist.map((id: string) => getDoc(doc(db, 'properties', id)));
-          const snaps = await Promise.all(propertyPromises);
-          setWishlistItems(snaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() } as Property)));
+          const propertyPromises = profile.wishlist.map(async (id: string) => {
+            const resp = await fetch(`/api/db/properties/${id}`);
+            if (resp.ok) {
+              const resJson = await resp.json();
+              return resJson.success ? resJson.property : null;
+            }
+            return null;
+          });
+          const fetchedItems = await Promise.all(propertyPromises);
+          setWishlistItems(fetchedItems.filter(Boolean) as Property[]);
         }
 
         // Fetch Bookings
@@ -95,10 +102,16 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
         // Fetch properties related to bookings for dropdown selection
         if (fetchedBookings.length > 0) {
           const propIds = Array.from(new Set(fetchedBookings.map((b: any) => b.propertyId)));
-          const propertyPromises = propIds.map((id: string) => getDoc(doc(db, 'properties', id)));
-          const snaps = await Promise.all(propertyPromises);
-          const bookedProps = snaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() } as Property));
-          setBookedPropertiesList(bookedProps);
+          const propertyPromises = propIds.map(async (id: string) => {
+            const resp = await fetch(`/api/db/properties/${id}`);
+            if (resp.ok) {
+              const resJson = await resp.json();
+              return resJson.success ? resJson.property : null;
+            }
+            return null;
+          });
+          const fetchedProps = await Promise.all(propertyPromises);
+          setBookedPropertiesList(fetchedProps.filter(Boolean) as Property[]);
         }
       } catch (err) {
         console.error(err);

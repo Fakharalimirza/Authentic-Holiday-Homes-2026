@@ -84,10 +84,17 @@ export default function Home() {
   useEffect(() => {
     async function fetchProperties() {
       try {
-        const q = query(collection(db, 'properties'), limit(8));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
-        setProperties(data.length > 0 ? data : MOCK_PROPERTIES);
+        const response = await fetch('/api/db/properties');
+        if (!response.ok) {
+          throw new Error('Network response status error ' + response.status);
+        }
+        const result = await response.json();
+        if (result.success && Array.isArray(result.properties)) {
+          const data = result.properties.slice(0, 8);
+          setProperties(data.length > 0 ? data : MOCK_PROPERTIES);
+        } else {
+          setProperties(MOCK_PROPERTIES);
+        }
       } catch (error) {
         console.error("Fetch error:", error);
         setProperties(MOCK_PROPERTIES); // Fallback to mock

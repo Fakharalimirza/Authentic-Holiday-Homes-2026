@@ -105,15 +105,17 @@ export default function PropertyDetails() {
     async function fetchProperty() {
       if (!id) return;
       try {
-        const docRef = doc(db, 'properties', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data() as Property;
-          setProperty({ id: docSnap.id, ...data });
-          setDescription(data.description || '');
+        const response = await fetch(`/api/db/properties/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch property details');
+        }
+        const result = await response.json();
+        if (result.success && result.property) {
+          setProperty(result.property);
+          setDescription(result.property.description || '');
         } 
       } catch (error) {
-        console.error(error);
+        console.error("Error loading property in details page:", error);
       } finally {
         setLoading(false);
       }
@@ -126,16 +128,14 @@ export default function PropertyDetails() {
       if (!id) return;
       setFetchingReviews(true);
       try {
-        const q = query(
-          collection(db, 'properties', id, 'reviews'),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const fetched = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setReviews(fetched);
+        const response = await fetch(`/api/db/properties/${id}/reviews`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch reviews');
+        }
+        const result = await response.json();
+        if (result.success && Array.isArray(result.reviews)) {
+          setReviews(result.reviews);
+        }
       } catch (err) {
         console.error("Error fetching reviews:", err);
       } finally {
@@ -225,65 +225,74 @@ export default function PropertyDetails() {
     }
     setSubmittingReview(true);
     try {
-      const reviewData = {
+      const reviewId = Math.random().toString(36).substring(2, 12);
+      const reviewPayload = {
+        id: reviewId,
+        userId: user.uid,
+        userName: user.displayName || 'Guest User',
+        userPhoto: user.photoURL || '',
+        rating: reviewRating,
+        comment: reviewComment
+      };
+
+      // 1. Save review in MySQL DB
+      const res = await fetch(`/api/db/properties/${id}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reviewPayload)
+      });
+      if (!res.ok) {
+        throw new Error('Failed to save review in database');
+      }
+
+      // 2. Re-calculate listing ratings and save to listings table in SQL DB
+      const currentCount = property.reviewCount || 0;
+      const currentRating = property.rating || 5.0;
+      const newCount = currentCount + 1;
+      const newRating = Number((((currentRating * currentCount) + reviewRating) / newCount).toFixed(1));
+
+      await fetch('/api/db/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...property,
+          reviewCount: newCount,
+          rating: newRating
+        })
+      });
+
+      // 3. Append to User Profile's reviewsList in Firestore (fallback option)
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          reviewsList: arrayUnion({
+            reviewId,
+            propertyId: id,
+            propertyName: property.title,
+            rating: reviewRating,
+            comment: reviewComment,
+            createdAt: new Date().toISOString()
+          })
+        });
+      } catch (errProfile) {
+        console.warn("Could not sync review to Firebase profile", errProfile);
+      }
+
+      // 4. Update local state
+      const localReview = {
+        id: reviewId,
         userId: user.uid,
         userName: user.displayName || 'Guest User',
         userPhoto: user.photoURL || '',
         rating: reviewRating,
         comment: reviewComment,
-        createdAt: serverTimestamp()
-      };
-
-      // 1. Add review doc under properties/{id}/reviews
-      const reviewsCol = collection(db, 'properties', id, 'reviews');
-      const docRef = await addDoc(reviewsCol, reviewData);
-
-      // 2. Update parent property stats atomically via transaction
-      const propertyRef = doc(db, 'properties', id);
-      await runTransaction(db, async (transaction) => {
-        const propDoc = await transaction.get(propertyRef);
-        if (!propDoc.exists()) throw new Error("Property not found");
-        const propData = propDoc.data();
-        const currentCount = propData.reviewCount || 0;
-        const currentRating = propData.rating || 5.0;
-
-        const newCount = currentCount + 1;
-        const newRating = Number((((currentRating * currentCount) + reviewRating) / newCount).toFixed(1));
-
-        transaction.update(propertyRef, {
-          reviewCount: newCount,
-          rating: newRating
-        });
-      });
-
-      // 3. Append to User Profile's reviewsList in Firestore
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        reviewsList: arrayUnion({
-          reviewId: docRef.id,
-          propertyId: id,
-          propertyName: property.title,
-          rating: reviewRating,
-          comment: reviewComment,
-          createdAt: new Date().toISOString()
-        })
-      });
-
-      // 4. Update local state
-      const localReview = {
-        id: docRef.id,
-        ...reviewData,
-        createdAt: { toDate: () => new Date() }
+        createdAt: new Date().toISOString()
       };
       setReviews(prev => [localReview, ...prev]);
       setReviewComment('');
       setReviewRating(5);
       setProperty(prev => {
         if (!prev) return null;
-        const currentCount = prev.reviewCount || 0;
-        const currentRating = prev.rating || 5.0;
-        const newCount = currentCount + 1;
-        const newRating = Number((((currentRating * currentCount) + reviewRating) / newCount).toFixed(1));
         return { ...prev, reviewCount: newCount, rating: newRating };
       });
 
@@ -297,59 +306,58 @@ export default function PropertyDetails() {
   };
 
   const handleDeleteReview = async (reviewId: string, itemRating: number) => {
-    if (!id || !user) return;
+    if (!id || !user || !property) return;
     if (!window.confirm("Are you sure you want to delete this review?")) return;
     try {
-      // 1. Delete review doc
-      const reviewRef = doc(db, 'properties', id, 'reviews', reviewId);
-      await deleteDoc(reviewRef);
+      // 1. Delete review from SQL DB
+      const res = await fetch(`/api/db/properties/${id}/reviews/${reviewId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        throw new Error('Failed to delete review from database');
+      }
 
-      // 2. Decrement and update parent property stats atomically via transaction
-      const propertyRef = doc(db, 'properties', id);
-      await runTransaction(db, async (transaction) => {
-        const propDoc = await transaction.get(propertyRef);
-        if (!propDoc.exists()) return;
-        const propData = propDoc.data();
-        const currentCount = propData.reviewCount || 0;
-        const currentRating = propData.rating || 5.0;
+      // 2. Decrement and update parent property stats in listings table
+      const currentCount = property.reviewCount || 0;
+      const currentRating = property.rating || 5.0;
+      const newCount = Math.max(0, currentCount - 1);
+      let newRating = 5.0;
+      if (newCount > 0) {
+        newRating = Number((((currentRating * currentCount) - itemRating) / newCount).toFixed(1));
+      }
 
-        const newCount = Math.max(0, currentCount - 1);
-        let newRating = 5.0;
-        if (newCount > 0) {
-          newRating = Number((((currentRating * currentCount) - itemRating) / newCount).toFixed(1));
-        }
-
-        transaction.update(propertyRef, {
+      await fetch('/api/db/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...property,
           reviewCount: newCount,
           rating: newRating
-        });
+        })
       });
 
       // 3. Remove from User Profile's reviewsList in Firestore
-      const reviewSummary = profile?.reviewsList?.find((r: any) => r.reviewId === reviewId);
-      const userRef = doc(db, 'users', user.uid);
-      if (reviewSummary) {
-        await updateDoc(userRef, {
-          reviewsList: arrayRemove(reviewSummary)
-        });
-      } else {
-        const updatedList = (profile?.reviewsList || []).filter((r: any) => r.reviewId !== reviewId);
-        await updateDoc(userRef, {
-          reviewsList: updatedList
-        });
+      try {
+        const reviewSummary = profile?.reviewsList?.find((r: any) => r.reviewId === reviewId);
+        const userRef = doc(db, 'users', user.uid);
+        if (reviewSummary) {
+          await updateDoc(userRef, {
+            reviewsList: arrayRemove(reviewSummary)
+          });
+        } else {
+          const updatedList = (profile?.reviewsList || []).filter((r: any) => r.reviewId !== reviewId);
+          await updateDoc(userRef, {
+            reviewsList: updatedList
+          });
+        }
+      } catch (errProfile) {
+        console.warn("Could not remove review from Firebase profile", errProfile);
       }
 
       // 4. Update local state
       setReviews(prev => prev.filter(r => r.id !== reviewId));
       setProperty(prev => {
         if (!prev) return null;
-        const currentCount = prev.reviewCount || 0;
-        const currentRating = prev.rating || 5.0;
-        const newCount = Math.max(0, currentCount - 1);
-        let newRating = 5.0;
-        if (newCount > 0) {
-          newRating = Number((((currentRating * currentCount) - itemRating) / newCount).toFixed(1));
-        }
         return { ...prev, reviewCount: newCount, rating: newRating };
       });
 

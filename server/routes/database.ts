@@ -71,6 +71,15 @@ router.post("/properties/:id/reviews", async (req, res) => {
   }
 });
 
+router.delete("/properties/:id/reviews/:reviewId", async (req, res) => {
+  try {
+    await dbBridge.deletePropertyReview(req.params.reviewId);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- BOOKINGS ---
 router.get("/bookings", async (req, res) => {
   try {

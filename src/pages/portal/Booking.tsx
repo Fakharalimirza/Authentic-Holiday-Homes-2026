@@ -51,10 +51,13 @@ export default function Booking() {
     async function fetchProperty() {
       if (!id) return;
       try {
-        const docRef = doc(db, 'properties', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProperty({ id: docSnap.id, ...(docSnap.data() as Property) });
+        const response = await fetch(`/api/db/properties/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch property details');
+        }
+        const result = await response.json();
+        if (result.success && result.property) {
+          setProperty(result.property);
         } else {
           setErrorHeader('Property listing not found');
         }

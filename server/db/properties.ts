@@ -309,3 +309,7 @@ export async function getPropertyReviews(propertyId: string): Promise<any[]> {
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
   }));
 }
+
+export async function deletePropertyReview(id: string): Promise<void> {
+  await query("DELETE FROM property_reviews WHERE id = ?", [id]);
+}
