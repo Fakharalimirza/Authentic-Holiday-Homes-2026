@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
-import { db, auth, collection, query, where, getDocs, doc, getDoc, setDoc, signOut } from '../../lib/firebase';
+import { db, auth, collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, signOut } from '../../lib/firebase';
 import PropertyCard from '../../components/PropertyCard';
+import CurrencySymbol from '../../components/CurrencySymbol';
 import { Property } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Calendar, Settings as SettingsIcon, LogOut, Star, Trash2, MessageSquare } from 'lucide-react';
+import { Heart, Calendar, Settings as SettingsIcon, LogOut, Star, Trash2, MessageSquare, MapPin, AlertCircle, CalendarRange, Clock, Info } from 'lucide-react';
 import TicketsConsole from '../admin/TicketsConsole';
 
 export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'bookings' | 'wishlist' | 'settings' | 'reviews' | 'support' }) {
@@ -37,6 +38,25 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
   const [bookings, setBookings] = useState<any[]>([]);
   const [bookedPropertiesList, setBookedPropertiesList] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  const handleCancelBooking = async (bookingId: string) => {
+    setCancelLoading(true);
+    try {
+      const bookingRef = doc(db, 'bookings', bookingId);
+      await updateDoc(bookingRef, {
+        status: 'cancelled'
+      });
+      // Synchronize state immediately
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b));
+      setCancellingId(null);
+    } catch (err) {
+      console.error("Error cancelling booking syncing with database:", err);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   // Local Settings States
   const [profileName, setProfileName] = useState('');
@@ -155,21 +175,174 @@ export default function Profile({ defaultTab = 'bookings' }: { defaultTab?: 'boo
                         No bookings found. Time for an adventure?
                       </div>
                     ) : (
-                      bookings.map(b => (
-                        <div key={b.id} className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-center">
-                           <div>
-                             <p className="text-xs uppercase tracking-widest font-bold text-zinc-400 mb-1">Booking #{b.id.slice(-6)}</p>
-                             <h4 className="font-bold text-lg">Property ID: {b.propertyId}</h4>
-                             <p className="text-sm text-zinc-500">{new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}</p>
-                           </div>
-                           <div className="text-right">
-                              <p className="font-bold text-xl">${b.totalPrice}</p>
-                              <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                b.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
-                              }`}>{b.status}</span>
-                           </div>
-                        </div>
-                      ))
+                      bookings.map(b => {
+                        const property = bookedPropertiesList.find(p => p.id === b.propertyId);
+                        
+                        // Calculate nights
+                        const dateIn = new Date(b.checkIn);
+                        const dateOut = new Date(b.checkOut);
+                        const diffTime = Math.abs(dateOut.getTime() - dateIn.getTime());
+                        const diffNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
+                        // Get primary image helper
+                        const getPrimaryImage = (prop: any) => {
+                          if (!prop?.images) return 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=85';
+                          return prop.images.webp?.[0] || prop.images.png?.[0] || prop.images.avif?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=85';
+                        };
+
+                        return (
+                          <div 
+                            key={b.id} 
+                            className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-805 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row gap-6 p-6"
+                          >
+                            {/* Left Column: Thumbnail Image */}
+                            <div className="w-full md:w-44 h-44 md:h-32 shrink-0 rounded-2xl overflow-hidden relative border border-zinc-100 dark:border-zinc-800">
+                              <img 
+                                src={getPrimaryImage(property)} 
+                                alt={property?.title || 'Property'} 
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute top-2 left-2 px-2.5 py-0.5 bg-black/60 backdrop-blur-md rounded-full text-white text-[9px] font-black uppercase tracking-wider">
+                                {property?.category || 'Stay'}
+                              </div>
+                            </div>
+
+                            {/* Center Column: Detailed Information */}
+                            <div className="flex-1 flex flex-col justify-between text-left">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                  <span className="text-[10px] uppercase font-black tracking-widest text-zinc-400">
+                                    Ref: {b.id.slice(-6).toUpperCase()}
+                                  </span>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                                  <span className="text-xs font-semibold text-zinc-500">
+                                    Unit {property?.unitNumber || b.unitNumber || 'N/A'} • {property?.buildingName || 'Building'}
+                                  </span>
+                                </div>
+
+                                <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white leading-snug line-clamp-1 mb-2">
+                                  {property?.title || 'Cozy Apartment Stay'}
+                                </h3>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                                  <div className="flex items-center gap-1.5">
+                                    <CalendarRange size={13} className="text-zinc-400 shrink-0" />
+                                    <span>
+                                      {new Date(b.checkIn).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {' ➔ '}
+                                      {new Date(b.checkOut).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock size={13} className="text-zinc-400 shrink-0" />
+                                    <span>{diffNights} nights total</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <MapPin size={13} className="text-zinc-400 shrink-0" />
+                                    <span className="line-clamp-1">{property?.location?.address || 'Palm Jumeirah, Dubai'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Info size={13} className="text-zinc-400 shrink-0" />
+                                    <span>Stay Guest: {b.guestName || profile?.displayName || 'Occupant'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Manage options & Cancellation button */}
+                              <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex items-center gap-4 text-xs font-bold text-zinc-500">
+                                  <button 
+                                    onClick={() => setActiveTab('support')}
+                                    className="flex items-center gap-1 hover:text-brand transition-colors"
+                                  >
+                                    <MessageSquare size={13} />
+                                    <span>Contact Helpdesk</span>
+                                  </button>
+                                  {(b.status === 'completed' || b.status === 'checked_out') && (
+                                    <button 
+                                      onClick={() => setActiveTab('reviews')}
+                                      className="flex items-center gap-1 hover:text-yellow-500 transition-colors"
+                                    >
+                                      <Star size={13} />
+                                      <span>Write Review</span>
+                                    </button>
+                                  )}
+                                </div>
+
+                                {cancellingId === b.id ? (
+                                  <div className="flex items-center gap-2 bg-red-50/50 dark:bg-red-950/20 px-3 py-1.5 rounded-2xl border border-red-100 dark:border-red-900/30">
+                                    <span className="text-[11px] font-bold text-red-750 dark:text-red-400">Cancel Stay?</span>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleCancelBooking(b.id)}
+                                      disabled={cancelLoading}
+                                      className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-zinc-400 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-colors"
+                                    >
+                                      {cancelLoading ? "Saving..." : "Confirm"}
+                                    </button>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setCancellingId(null)}
+                                      disabled={cancelLoading}
+                                      className="px-3 py-1 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-colors"
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                ) : (
+                                  b.status !== 'cancelled' && b.status !== 'completed' && b.status !== 'checked_out' && (
+                                    <button 
+                                      type="button"
+                                      onClick={() => setCancellingId(b.id)}
+                                      className="px-3.5 py-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-red-200 hover:bg-red-50/20 dark:hover:bg-red-950/10 text-zinc-500 hover:text-red-650 dark:hover:text-red-400 rounded-full text-[10px] font-black tracking-widest uppercase transition-all"
+                                    >
+                                      Cancel Booking
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right Column: Price and Status Pill */}
+                            <div className="w-full md:w-36 flex md:flex-col justify-between items-end md:items-end border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800/80 pt-4 md:pt-0 md:pl-6 shrink-0">
+                              <div className="text-left md:text-right w-full">
+                                <span className="text-[10px] uppercase font-black tracking-widest text-zinc-400 block mb-0.5">Total Paid</span>
+                                <div className="font-black text-xl text-zinc-900 dark:text-white flex items-center gap-0.5 justify-start md:justify-end">
+                                  <CurrencySymbol size="0.9em" className="text-zinc-800 dark:text-zinc-200" />
+                                  <span>{b.totalPrice}</span>
+                                </div>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight block mt-1">
+                                  Payment: <strong className="text-zinc-700 dark:text-zinc-350">{b.paymentStatus || 'unpaid'}</strong>
+                                </span>
+                              </div>
+
+                              <div className="text-right">
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                  b.status === 'confirmed' || b.status === 'checked_in'
+                                    ? 'bg-emerald-50 text-emerald-750 border-emerald-250/20 dark:bg-emerald-950/20 dark:text-emerald-400'
+                                    : b.status === 'pending'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-250/20 dark:bg-amber-950/20 dark:text-amber-400'
+                                    : b.status === 'cancelled'
+                                    ? 'bg-red-50 text-red-650 border-red-250/20 dark:bg-red-950/20 dark:text-red-405'
+                                    : 'bg-zinc-50 text-zinc-650 border-zinc-200 dark:bg-zinc-950 dark:text-zinc-400'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    b.status === 'confirmed' || b.status === 'checked_in'
+                                      ? 'bg-emerald-500 animate-pulse'
+                                      : b.status === 'pending'
+                                      ? 'bg-amber-500 animate-pulse'
+                                      : b.status === 'cancelled'
+                                      ? 'bg-red-500'
+                                      : 'bg-zinc-405'
+                                  }`} />
+                                  <span>{b.status}</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 )}
