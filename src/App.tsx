@@ -24,6 +24,7 @@ const ListProperty = React.lazy(() => import('./pages/public/ListProperty'));
 const Properties = React.lazy(() => import('./pages/public/Properties'));
 const Booking = React.lazy(() => import('./pages/portal/Booking'));
 const AcceptInvite = React.lazy(() => import('./pages/portal/AcceptInvite'));
+const GuestContractSignature = React.lazy(() => import('./pages/public/GuestContractSignature'));
 import Footer from './components/Footer';
 import Logo from './components/Logo';
 
@@ -438,14 +439,15 @@ function AppContent() {
   const { user, profile } = useAuth();
   const { pathname } = useLocation();
 
-  const hideFooter = pathname.startsWith('/admin') || pathname === '/admin';
+  const isGuestContract = pathname.startsWith('/guest/contract');
+  const hideFooter = pathname.startsWith('/admin') || pathname === '/admin' || isGuestContract;
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-300">
-      <Navbar />
+      {!isGuestContract && <Navbar />}
       <AuthModalContainer />
       <AnnouncementPopup />
-      <main className="pt-16">
+      <main className={isGuestContract ? "pt-0" : "pt-16"}>
         <React.Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -462,6 +464,7 @@ function AppContent() {
             <Route path="/wishlist" element={<Profile defaultTab="wishlist" />} />
             <Route path="/booking/:id" element={<Booking />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/guest/contract/:id" element={<GuestContractSignature />} />
           </Routes>
         </React.Suspense>
       </main>

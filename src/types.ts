@@ -19,6 +19,7 @@ export interface Property {
   rating?: number;
   reviewCount?: number;
   hostId?: string;
+  status?: 'live' | 'draft' | string;
   createdAt?: any;
   updatedAt?: any;
   location: {

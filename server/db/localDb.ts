@@ -113,18 +113,26 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
     "audit_logs", "settings", "device_tokens", "property_amenities", "landlords",
     "buildings", "units", "email_templates"
   ];
-  for (const t of tables) {
-    if (norm.includes(` ${t} `) || norm.includes(` ${t}(`) || norm.includes(` ${t},`) || norm.endsWith(` ${t}`)) {
-      tableName = t;
-      break;
+  if (norm.includes(" listings ") || norm.includes(" listings(") || norm.includes(" listings,") || norm.endsWith(" listings")) {
+    tableName = "properties";
+  } else {
+    for (const t of tables) {
+      if (norm.includes(` ${t} `) || norm.includes(` ${t}(`) || norm.includes(` ${t},`) || norm.endsWith(` ${t}`)) {
+        tableName = t;
+        break;
+      }
     }
   }
   if (!tableName) {
     const words = norm.split(/[\s,()]+/);
-    for (const t of tables) {
-      if (words.includes(t)) {
-        tableName = t;
-        break;
+    if (words.includes("listings")) {
+      tableName = "properties";
+    } else {
+      for (const t of tables) {
+        if (words.includes(t)) {
+          tableName = t;
+          break;
+        }
       }
     }
   }
@@ -321,19 +329,46 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
         const existing = tableData.find(row => row.id === params[0]);
         if (existing) existing.isDeleted = 1;
       } else {
-        const [id, title, description, location, price, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount, category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights, landlordId, buildingId] = params;
+        const [
+          id, title, description, location, price, priceDaily, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount,
+          category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights,
+          landlordId, buildingId, pfListingId, pfImported, pfRawData, pfPermitNumber, pfLocationId, pfAssignedTo, status
+        ] = params;
         
         const propRecord = {
-          id, title, description, location,
+          id,
+          title,
+          description: description || '',
+          location,
           price: Number(price || 0),
+          priceDaily: priceDaily !== undefined ? Number(priceDaily) : Number(price || 0),
           priceMonthly: priceMonthly ? Number(priceMonthly) : null,
           images: typeof images === "string" ? JSON.parse(images) : (images || {}),
           amenities: typeof amenities === "string" ? JSON.parse(amenities) : (amenities || {}),
           hostId,
-          isAvailable: Number(isAvailable || 1),
+          isAvailable: Number(isAvailable !== undefined ? isAvailable : 1),
           rating: Number(rating || 5),
           reviewCount: Number(reviewCount || 0),
-          category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights, landlordId, buildingId,
+          category,
+          unitNumber,
+          buildingName,
+          referenceNo,
+          purpose,
+          furnishing,
+          size: size ? Number(size) : 0,
+          bedrooms: bedrooms ? Number(bedrooms) : 0,
+          bathrooms: bathrooms ? Number(bathrooms) : 0,
+          maxGuests: maxGuests ? Number(maxGuests) : 1,
+          minimumNights: minimumNights ? Number(minimumNights) : 30,
+          landlordId,
+          buildingId,
+          pfListingId,
+          pfImported: Boolean(pfImported),
+          pfRawData,
+          pfPermitNumber,
+          pfLocationId,
+          pfAssignedTo,
+          status: status || 'live',
           isDeleted: 0,
           createdAt: new Date().toISOString()
         };
@@ -351,17 +386,44 @@ export function runLocalSqlQuery(sql: string, params: any[] = []): any {
         const existing = tableData.find(row => row.id === targetId);
         if (existing) existing.status = params[0];
       } else {
-        const [id, propertyId, propertyName, guestId, guestName, guestEmail, guestPhone, checkIn, checkOut, totalPrice, status] = params;
-        const record = {
+        const id = params[0];
+        const propertyId = params[1];
+        const propertyName = params[2];
+        const guestId = params[3];
+        const guestName = params[4];
+        const guestEmail = params[5];
+        const guestPhone = params[6];
+        const checkIn = params[7];
+        const checkOut = params[8];
+        const totalPrice = params[9];
+        const status = params[10];
+
+        const record: any = {
           id, propertyId, propertyName, guestId, guestName, guestEmail, guestPhone, checkIn, checkOut,
           totalPrice: Number(totalPrice || 0),
-          status: status || "pending",
-          createdAt: new Date().toISOString()
+          status: status || "pending"
         };
+
+        if (params.length >= 19) {
+          record.contractSent = Boolean(params[11]);
+          record.contractSigned = Boolean(params[12]);
+          record.contractSignature = params[13] || null;
+          record.contractSignedAt = params[14] || null;
+          record.contractSignedIp = params[15] || null;
+          record.contractSignedUserAgent = params[16] || null;
+          record.contractSignedName = params[17] || null;
+          record.advanceBookingFee = Number(params[18] || 0);
+        }
+
         const existingIdx = tableData.findIndex(row => row.id === id);
         if (existingIdx >= 0) {
-          db.bookings[existingIdx] = { ...db.bookings[existingIdx], ...record };
+          db.bookings[existingIdx] = { 
+            createdAt: new Date().toISOString(),
+            ...db.bookings[existingIdx], 
+            ...record 
+          };
         } else {
+          record.createdAt = new Date().toISOString();
           db.bookings.push(record);
         }
       }

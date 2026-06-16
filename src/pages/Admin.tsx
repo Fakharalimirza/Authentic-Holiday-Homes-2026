@@ -56,6 +56,7 @@ import AdminStats from './admin/AdminStats';
 import BookingsTable from './admin/BookingsTable';
 import DeleteConfirmationModal from './admin/DeleteConfirmationModal';
 import PropertiesTable from './admin/PropertiesTable';
+import PropertyFinderPortalImporter from './admin/PropertyFinderPortalImporter';
 import PropertyFormModal from './admin/PropertyFormModal';
 import { PropertyForm, getInitialForm } from './admin/types';
 import BookingConsole from './admin/bookings/BookingConsole';
@@ -212,6 +213,7 @@ export default function Admin() {
 
   // Bulk properties states
   const [showBulkProperties, setShowBulkProperties] = useState(false);
+  const [showPfListingImporter, setShowPfListingImporter] = useState(false);
   const [bulkPropertiesCsv, setBulkPropertiesCsv] = useState('');
   const [bulkPropertiesPreview, setBulkPropertiesPreview] = useState<any[]>([]);
   const [bulkPropertiesError, setBulkPropertiesError] = useState('');
@@ -336,7 +338,8 @@ export default function Admin() {
       imageFiles: [],
       imageUrls: p.images || { avif: [], webp: [], png: [] },
       rating: p.rating || 5.0,
-      isAvailable: p.isAvailable ?? true
+      isAvailable: p.isAvailable ?? true,
+      status: p.status || 'live'
     });
     setIsModalOpen(true);
   };
@@ -373,7 +376,8 @@ export default function Admin() {
       imageFiles: [],
       imageUrls: p.images || { avif: [], webp: [], png: [] },
       rating: p.rating || 5.0,
-      isAvailable: true
+      isAvailable: true,
+      status: p.status || 'live'
     });
     setIsModalOpen(true);
   };
@@ -1424,20 +1428,52 @@ export default function Admin() {
                   </div>
 
                   {/* Bulk Properties Operator Trigger Bar */}
-                  <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-150 dark:border-zinc-805 rounded-2xl">
+                  <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-150 dark:border-zinc-805 rounded-2xl">
                     <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium font-sans">
                       <Database className="w-4 h-4 text-brand shrink-0" />
                       <span>Configure, import or bulk download full properties registries.</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowBulkProperties(!showBulkProperties)}
-                      className="px-4 py-2 bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-105 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-450" />
-                      Bulk Operations
-                    </button>
+                    <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPfListingImporter(!showPfListingImporter);
+                          setShowBulkProperties(false);
+                        }}
+                        className={`px-4 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer ${
+                          showPfListingImporter 
+                            ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                            : 'bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/20 dark:hover:bg-orange-950/30 dark:text-orange-400'
+                        }`}
+                      >
+                        <Building2 className="w-4 h-4" />
+                        PF Portal Import
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowBulkProperties(!showBulkProperties);
+                          setShowPfListingImporter(false);
+                        }}
+                        className={`px-4 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer ${
+                          showBulkProperties 
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' 
+                            : 'bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-105'
+                        }`}
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-450" />
+                        Bulk Operations
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Property Finder Direct Portal Importer Container */}
+                  {showPfListingImporter && (
+                    <PropertyFinderPortalImporter 
+                      onImportSuccess={fetchData}
+                      existingListingIds={properties.map((p: any) => String(p.id))}
+                    />
+                  )}
 
                   {/* Bulk Properties Operations Panel */}
                   {showBulkProperties && (
@@ -1652,6 +1688,7 @@ export default function Admin() {
                     handleDuplicate={handleDuplicate}
                     setConfirmDeleteId={setConfirmDeleteId}
                     deletingId={deletingId}
+                    onRefresh={fetchData}
                   />
                 </div>
               )}

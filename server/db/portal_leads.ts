@@ -2,7 +2,7 @@ import { query } from './connection';
 
 export interface PortalLeadRecord {
   id: string; // lead_id
-  source: 'bayut' | 'dubizzle';
+  source: 'bayut' | 'dubizzle' | 'propertyfinder';
   type: 'whatsapp' | 'sms' | 'phone' | 'email' | 'call_log' | 'story';
   date_time: string | null;
   listing_id?: string;

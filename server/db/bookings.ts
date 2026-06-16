@@ -3,10 +3,32 @@ import { query } from './connection';
 // --- BOOKINGS SECTION ---
 export async function saveBooking(id: string, booking: any): Promise<void> {
   await query(`
-    INSERT INTO bookings (id, propertyId, propertyName, guestId, guestName, guestEmail, guestPhone, checkIn, checkOut, totalPrice, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO bookings (
+      id, propertyId, propertyName, guestId, guestName, guestEmail, guestPhone, 
+      checkIn, checkOut, totalPrice, status, 
+      contractSent, contractSigned, contractSignature, contractSignedAt, 
+      contractSignedIp, contractSignedUserAgent, contractSignedName, advanceBookingFee
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
-      status = VALUES(status)
+      propertyId = VALUES(propertyId),
+      propertyName = VALUES(propertyName),
+      guestId = VALUES(guestId),
+      guestName = VALUES(guestName),
+      guestEmail = VALUES(guestEmail),
+      guestPhone = VALUES(guestPhone),
+      checkIn = VALUES(checkIn),
+      checkOut = VALUES(checkOut),
+      totalPrice = VALUES(totalPrice),
+      status = VALUES(status),
+      contractSent = VALUES(contractSent),
+      contractSigned = VALUES(contractSigned),
+      contractSignature = VALUES(contractSignature),
+      contractSignedAt = VALUES(contractSignedAt),
+      contractSignedIp = VALUES(contractSignedIp),
+      contractSignedUserAgent = VALUES(contractSignedUserAgent),
+      contractSignedName = VALUES(contractSignedName),
+      advanceBookingFee = VALUES(advanceBookingFee)
   `, [
     id,
     booking.propertyId,
@@ -18,7 +40,15 @@ export async function saveBooking(id: string, booking: any): Promise<void> {
     booking.checkIn,
     booking.checkOut,
     booking.totalPrice || 0,
-    booking.status || 'pending'
+    booking.status || 'pending',
+    booking.contractSent ? 1 : 0,
+    booking.contractSigned ? 1 : 0,
+    booking.contractSignature || null,
+    booking.contractSignedAt || null,
+    booking.contractSignedIp || null,
+    booking.contractSignedUserAgent || null,
+    booking.contractSignedName || null,
+    booking.advanceBookingFee || 0.00
   ]);
 }
 
@@ -36,8 +66,44 @@ export async function getAllBookings(): Promise<any[]> {
     checkOut: row.checkOut ? new Date(row.checkOut).toISOString().split('T')[0] : '',
     totalPrice: Number(row.totalPrice),
     status: row.status,
+    contractSent: Boolean(row.contractSent),
+    contractSigned: Boolean(row.contractSigned),
+    contractSignature: row.contractSignature,
+    contractSignedAt: row.contractSignedAt,
+    contractSignedIp: row.contractSignedIp,
+    contractSignedUserAgent: row.contractSignedUserAgent,
+    contractSignedName: row.contractSignedName,
+    advanceBookingFee: Number(row.advanceBookingFee || 0),
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
   }));
+}
+
+export async function getBooking(id: string): Promise<any | null> {
+  const rows = await query("SELECT * FROM bookings WHERE id = ?", [id]);
+  if (!rows || rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    id: row.id,
+    propertyId: row.propertyId,
+    propertyName: row.propertyName,
+    guestId: row.guestId,
+    guestName: row.guestName,
+    guestEmail: row.guestEmail,
+    guestPhone: row.guestPhone,
+    checkIn: row.checkIn ? new Date(row.checkIn).toISOString().split('T')[0] : '',
+    checkOut: row.checkOut ? new Date(row.checkOut).toISOString().split('T')[0] : '',
+    totalPrice: Number(row.totalPrice),
+    status: row.status,
+    contractSent: Boolean(row.contractSent),
+    contractSigned: Boolean(row.contractSigned),
+    contractSignature: row.contractSignature,
+    contractSignedAt: row.contractSignedAt,
+    contractSignedIp: row.contractSignedIp,
+    contractSignedUserAgent: row.contractSignedUserAgent,
+    contractSignedName: row.contractSignedName,
+    advanceBookingFee: Number(row.advanceBookingFee || 0),
+    createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
+  };
 }
 
 export async function updateBookingStatus(id: string, status: string): Promise<void> {

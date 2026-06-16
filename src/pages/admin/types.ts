@@ -49,6 +49,7 @@ export interface PropertyForm {
   minimumNights: number;
   landlordId?: string;
   buildingId?: string;
+  status?: string;
 }
 
 export const getInitialForm = (): PropertyForm => ({
@@ -85,7 +86,8 @@ export const getInitialForm = (): PropertyForm => ({
   isAvailable: true,
   minimumNights: 30,
   landlordId: '',
-  buildingId: ''
+  buildingId: '',
+  status: 'live'
 });
 
 export interface LandlordItem {

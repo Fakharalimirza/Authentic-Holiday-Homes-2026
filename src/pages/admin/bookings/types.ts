@@ -20,7 +20,7 @@ export interface AdminBooking {
   totalPrice: number; // maps to grandTotalAmount
   paymentStatus: 'paid' | 'unpaid' | 'partially_paid' | 'overdue' | 'refunded' | 'deposit_held' | 'deposit_refunded';
   status: 'pending' | 'confirmed' | 'cancelled' | 'checked_in' | 'checked_out' | 'completed';
-  source: 'direct' | 'whatsapp' | 'airbnb' | 'booking.com' | 'other';
+  source: string;
   notes?: string;
   createdAt?: any;
   updatedAt?: any;
@@ -40,6 +40,39 @@ export interface AdminBooking {
   grandTotalAmount?: number;
   paymentSchedule?: BookingPaymentInstallment[];
   specialTermsAndConditions?: string;
+  customMonthlyRents?: number[];
+
+  // Stay Lifecycle workflow state fields
+  workflowStep?: number;
+  advanceBookingFee?: number;
+  advancePaidStatus?: string;
+  contractSent?: boolean;
+  contractSigned?: boolean;
+  checkInChecklist?: {
+    unitType: string;
+    items: Record<string, { status: 'good' | 'damaged'; notes: string }>;
+    guestSignature: string;
+    agentSignature: string;
+    keysHandedOver: boolean;
+    signedAt: string;
+  };
+  stayDecision?: 'checkout' | 'renew' | 'extend';
+  renewalNewCheckOut?: string;
+  renewalNewRentPerMonth?: number;
+  renewalContractSigned?: boolean;
+  extensionNewCheckOut?: string;
+  extensionRate?: number;
+  extensionPaperworkSigned?: boolean;
+  checkOutChecklist?: {
+    items: Record<string, { status: 'good' | 'damaged'; notes: string }>;
+    guestSignature: string;
+    agentSignature: string;
+    completed: boolean;
+    signedAt: string;
+  };
+  damageDeductions?: number;
+  damageNotes?: string;
+  depositRefundedStatus?: 'pending' | 'processing' | 'completed';
 }
 
 export interface BookingFiltersState {

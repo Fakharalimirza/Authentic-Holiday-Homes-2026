@@ -420,11 +420,14 @@ export default function PropertyDetails() {
   };
 
   if (loading) return <div className="p-20 text-center animate-pulse text-zinc-400 font-bold uppercase tracking-widest">Checking available units...</div>;
-  if (!property) return (
+  if (!property || property.status === 'draft') return (
     <div className="p-20 text-center flex flex-col items-center gap-6">
-      <div className="w-20 h-20 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400"><X size={32} /></div>
-      <h2 className="text-2xl font-bold">Unit not found</h2>
-      <button onClick={() => navigate('/properties')} className="px-6 py-3 bg-brand text-white rounded-full font-bold">Back to Search</button>
+      <div className="w-20 h-20 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400"><X size={32} /></div>
+      <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">{!property ? "Unit not found" : "Listing in Draft Mode"}</h2>
+      <p className="text-zinc-500 dark:text-zinc-450 text-sm max-w-md">
+        {!property ? "The requested property unit could not be located." : "This property is currently being prepared and is not yet publicly published on our system."}
+      </p>
+      <button onClick={() => navigate('/properties')} className="px-6 py-3 bg-brand text-white rounded-full font-bold cursor-pointer transition-all hover:bg-opacity-90">Back to Search</button>
     </div>
   );
 

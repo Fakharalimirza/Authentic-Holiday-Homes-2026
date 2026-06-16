@@ -17,9 +17,9 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
     INSERT INTO listings (
       id, title, description, location, price, priceDaily, priceMonthly, images, amenities, hostId, isAvailable, rating, reviewCount,
       category, unitNumber, buildingName, referenceNo, purpose, furnishing, size, bedrooms, bathrooms, maxGuests, minimumNights,
-      landlordId, buildingId
+      landlordId, buildingId, pfListingId, pfImported, pfRawData, pfPermitNumber, pfLocationId, pfAssignedTo, status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       title = VALUES(title),
       description = VALUES(description),
@@ -45,15 +45,22 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
       maxGuests = VALUES(maxGuests),
       minimumNights = VALUES(minimumNights),
       landlordId = VALUES(landlordId),
-      buildingId = VALUES(buildingId)
+      buildingId = VALUES(buildingId),
+      pfListingId = VALUES(pfListingId),
+      pfImported = VALUES(pfImported),
+      pfRawData = VALUES(pfRawData),
+      pfPermitNumber = VALUES(pfPermitNumber),
+      pfLocationId = VALUES(pfLocationId),
+      pfAssignedTo = VALUES(pfAssignedTo),
+      status = VALUES(status)
   `, [
     id,
     prop.title,
     prop.description || '',
     locationVal,
     prop.price || 0,
-    prop.price || 0, // priceDaily mapped from prop.price
-    prop.priceMonthly || null,
+    prop.priceDaily !== undefined ? prop.priceDaily : (prop.price || 0),
+    prop.priceMonthly !== undefined ? prop.priceMonthly : null,
     imagesJson,
     amenitiesJson,
     prop.hostId,
@@ -72,7 +79,14 @@ export async function saveProperty(id: string, prop: any): Promise<void> {
     prop.maxGuests || 1,
     prop.minimumNights || 30,
     prop.landlordId || null,
-    prop.buildingId || null
+    prop.buildingId || null,
+    prop.pfListingId || null,
+    prop.pfImported ? 1 : 0,
+    prop.pfRawData || null,
+    prop.pfPermitNumber || null,
+    prop.pfLocationId || null,
+    prop.pfAssignedTo || null,
+    prop.status || 'live'
   ]);
 
   // Sync amenities to property_amenities relational table
@@ -180,6 +194,13 @@ export async function getAllProperties(options?: { amenities?: string[] }): Prom
       minimumNights: row.minimumNights ? Number(row.minimumNights) : 30,
       landlordId: row.landlordId || null,
       buildingId: row.buildingId || null,
+      pfListingId: row.pfListingId || null,
+      pfImported: row.pfImported ? true : false,
+      pfRawData: row.pfRawData || null,
+      pfPermitNumber: row.pfPermitNumber || null,
+      pfLocationId: row.pfLocationId || null,
+      pfAssignedTo: row.pfAssignedTo || null,
+      status: row.status || 'live',
       createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
     };
   });
@@ -249,6 +270,13 @@ export async function getProperty(id: string): Promise<any | null> {
     minimumNights: row.minimumNights ? Number(row.minimumNights) : 30,
     landlordId: row.landlordId || null,
     buildingId: row.buildingId || null,
+    pfListingId: row.pfListingId || null,
+    pfImported: row.pfImported ? true : false,
+    pfRawData: row.pfRawData || null,
+    pfPermitNumber: row.pfPermitNumber || null,
+    pfLocationId: row.pfLocationId || null,
+    pfAssignedTo: row.pfAssignedTo || null,
+    status: row.status || 'live',
     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null
   };
 }

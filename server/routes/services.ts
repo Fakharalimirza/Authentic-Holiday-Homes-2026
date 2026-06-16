@@ -6,7 +6,8 @@ import {
   getEmailTemplates, 
   getEmailTemplateById, 
   saveEmailTemplate, 
-  sendTemplatedEmail 
+  sendTemplatedEmail,
+  sendEmail
 } from "../db/email_templates";
 import { executeBirthdayCheck } from "../services/birthdayScheduler";
 
@@ -187,6 +188,8 @@ router.post("/email-templates/:id/test-send", async (req, res) => {
   }
 });
 
+import { checkPermitCompliance, syncListingToPropertyFinder, getPropertyFinderListings, importPropertyFinderListing } from "../services/propertyFinderService";
+
 router.post("/birthday-check", async (req, res) => {
   try {
     const results = await executeBirthdayCheck();
@@ -199,6 +202,120 @@ router.post("/birthday-check", async (req, res) => {
   } catch (err: any) {
     console.error("Manual birthday check failed:", err);
     res.status(500).json({ error: err.message || "Birthday check process failed" });
+  }
+});
+
+// --- PROPERTY FINDER ENTERPRISE API OPERATIONS ---
+router.post("/propertyfinder/compliance-check", async (req, res) => {
+  try {
+    const { permitNumber, licenseNumber } = req.body;
+    if (!permitNumber) {
+      return res.status(400).json({ error: "Permit/Advertisement identifier is mandatory." });
+    }
+    const checkDetail = await checkPermitCompliance(permitNumber, licenseNumber);
+    res.json({ success: true, compliance: checkDetail });
+  } catch (error: any) {
+    console.error("Property Finder compliance check error:", error);
+    res.status(500).json({ error: error.message || "Compliance verification failed on the remote server" });
+  }
+});
+
+router.post("/propertyfinder/sync-listing", async (req, res) => {
+  try {
+    const { listing, permitDetails } = req.body;
+    if (!listing || !listing.title) {
+      return res.status(400).json({ error: "Complete listing properties and titles are required." });
+    }
+    const syncStatus = await syncListingToPropertyFinder(listing, permitDetails);
+    res.json(syncStatus);
+  } catch (error: any) {
+    console.error("Property Finder dynamic listing sync error:", error);
+    res.status(500).json({ error: error.message || "Porting listing up to Property Finder failed" });
+  }
+});
+
+router.get("/propertyfinder/listings", async (req, res) => {
+  try {
+    const listings = await getPropertyFinderListings();
+    res.json({ success: true, listings });
+  } catch (error: any) {
+    console.error("Property Finder fetch listings error:", error);
+    res.status(500).json({ error: error.message || "Failed to retrieve available listings from Property Finder portal" });
+  }
+});
+
+router.post("/propertyfinder/import", async (req, res) => {
+  try {
+    const { listingId, hostId } = req.body;
+    if (!listingId) {
+      return res.status(400).json({ error: "listingId is required to invoke sync operations" });
+    }
+    const result = await importPropertyFinderListing(listingId, hostId);
+    res.json(result);
+  } catch (error: any) {
+    console.error("Property Finder import listing error:", error);
+    res.status(500).json({ error: error.message || "Property importing pipeline failed on remote files execution" });
+  }
+});
+
+// --- DYNAMIC STAY CONTRACT EMAIL DELIVERY PIPELINE ---
+router.post("/bookings/:id/send-contract", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guestEmail, guestName, propertyTitle, checkIn, checkOut, signUrl } = req.body;
+
+    if (!guestEmail) {
+      return res.status(400).json({ error: "Guest email address is required to dispatch contracts." });
+    }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #e4e4e7; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div style="background-color: #fcfcfc; padding: 24px; border-bottom: 3px solid #b22234; text-align: center;">
+          <h2 style="margin: 0; color: #b22234; text-transform: uppercase; font-size: 20px; letter-spacing: 1px; font-weight: 800;">Authentic Holiday Homes</h2>
+          <span style="font-size: 9px; color: #94a3b8; font-weight: bold; letter-spacing: 0.5px;">DUBAI DET REGISTERED OPERATOR | LICENSE: 1061365</span>
+        </div>
+        <div style="padding: 36px; background-color: #ffffff;">
+          <p style="font-size: 14px; margin-top: 0; color: #334155;">Dear <strong>${guestName || 'Valued Guest'}</strong>,</p>
+          <p style="font-size: 14px; color: #334155;">We are delighted to prepare for your upcoming stay at <strong>${propertyTitle || 'our luxury apartment'}</strong> in Dubai!</p>
+          <p style="font-size: 14px; color: #334155;">To finalize your reservation, we kindly request you to review and digitally sign the short-term Letting Tenancy Agreement. Please click the button below to view the secure contract and sign it directly on your mobile or desktop device:</p>
+          
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${signUrl}" style="display: inline-block; background-color: #b22234; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(178,34,52,0.18);">Review & Sign Lease Agreement</a>
+          </div>
+
+          <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; font-size: 12px; margin-bottom: 24px; border-left: 4px solid #b22234; color: #475569;">
+            <strong>Stay Details / تفاصيل حجز الإقامة:</strong><br/>
+            • Reference ID: ${id.toUpperCase()}<br/>
+            • Property: ${propertyTitle || 'Licensed Unit'}<br/>
+            • Check-In (Arrival): ${checkIn}<br/>
+            • Check-Out (Departure): ${checkOut}
+          </div>
+
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 24px; font-size: 11px; color: #64748b; line-height: 1.55;">
+            <p style="margin: 0 0 8px 0; color: #475569;"><strong>Bilingual Notice (العربية):</strong> يرجى الضغط على الزر الأحمر أعلاه لمراجعة وتوقيع عقد إيجار السكن لتأكيد حجزك وتسهيل إجراءات دخول الشقة.</p>
+            <p style="margin: 0;">If you have any questions or require assistance, please feel free to reply directly to this email or call our team at +971 4 286 6788.</p>
+          </div>
+        </div>
+        <div style="background-color: #f1f5f9; padding: 18px; text-align: center; font-size: 10px; color: #94a3b8; font-family: monospace;">
+          &copy; 2026 AUTHENTIC HOLIDAY HOMES L.L.C. ALL RIGHTS RESERVED.
+        </div>
+      </div>
+    `;
+
+    const success = await sendEmail(
+      guestEmail,
+      `Action Required: Tenancy Agreement Pending Signature - Stay at ${propertyTitle || 'Authentic Holiday Homes'}`,
+      htmlContent
+    );
+
+    if (success) {
+      res.json({ success: true, message: "Contract dispatched successfully!" });
+    } else {
+      res.status(500).json({ error: "Failed to dispatch contract email transaction. SMTP issue." });
+    }
+  } catch (error: any) {
+    console.error("Booking dynamic contract dispatch pipeline error:", error);
+    res.status(500).json({ error: error.message || "Email pipeline error" });
   }
 });
 

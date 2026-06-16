@@ -90,7 +90,8 @@ export default function Home() {
         }
         const result = await response.json();
         if (result.success && Array.isArray(result.properties)) {
-          const data = result.properties.slice(0, 8);
+          const liveProperties = result.properties.filter((p: any) => p.status !== 'draft');
+          const data = liveProperties.slice(0, 8);
           setProperties(data.length > 0 ? data : MOCK_PROPERTIES);
         } else {
           setProperties(MOCK_PROPERTIES);

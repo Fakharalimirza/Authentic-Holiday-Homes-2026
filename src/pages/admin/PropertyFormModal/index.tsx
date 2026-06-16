@@ -282,6 +282,7 @@ export default function PropertyFormModal({
         minimumNights: Number(form.minimumNights || 30),
         landlordId: form.landlordId || '',
         buildingId: form.buildingId || '',
+        status: form.status || 'live',
         updatedAt: serverTimestamp()
       };
 

@@ -26,6 +26,7 @@ export interface AppSettings {
   availableAreas: string[];
   availableAmenities: string[];
   availableFurnishing: string[];
+  availableLeadChannels?: string[];
 
   availableGasCompanies?: CompanyContact[];
   availableCoolingCompanies?: CompanyContact[];
@@ -74,6 +75,13 @@ export interface AppSettings {
   dubizzleApiKey?: string;
   dubizzleApiUrl?: string;
   syncIntervalMinutes?: number;
+
+  // Property Finder Enterprise API Integration Settings
+  pfEnabled?: boolean;
+  pfApiKey?: string;
+  pfApiSecret?: string;
+  pfApiUrl?: string;
+  pfBrokerLicense?: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -98,6 +106,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     'Dishwasher', 'Kids Play Area', 'Lobby in Building', 'Reception/Waiting Room'
   ],
   availableFurnishing: ['Furnished', 'Unfurnished', 'Semi-Furnished'],
+  availableLeadChannels: ['Direct Booking / Agent', 'WhatsApp Group Chat', 'Airbnb Portal Listings', 'Booking.com', 'Property Finder', 'Bayut', 'Dubizzle', 'Other'],
   
   availableGasCompanies: [
     { name: 'Lootah Gas', contact: '800 566824' },
@@ -157,7 +166,14 @@ const DEFAULT_SETTINGS: AppSettings = {
   dubizzleEnabled: false,
   dubizzleApiKey: '',
   dubizzleApiUrl: 'https://dubizzle.com/profolio/api-v7/stats/website-client-leads',
-  syncIntervalMinutes: 30
+  syncIntervalMinutes: 30,
+
+  // Property Finder Integration Default settings
+  pfEnabled: false,
+  pfApiKey: '',
+  pfApiSecret: '',
+  pfApiUrl: 'https://atlas.propertyfinder.com/v1',
+  pfBrokerLicense: ''
 };
 
 enum OperationType {

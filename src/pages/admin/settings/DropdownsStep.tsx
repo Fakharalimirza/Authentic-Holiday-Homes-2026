@@ -7,13 +7,14 @@ interface DropdownsStepProps {
   setLocalSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
 }
 
-type DropdownFields = 'availableCategories' | 'availableAreas' | 'availableAmenities' | 'availableFurnishing';
+type DropdownFields = 'availableCategories' | 'availableAreas' | 'availableAmenities' | 'availableFurnishing' | 'availableLeadChannels';
 
 export default function DropdownsStep({ localSettings, setLocalSettings }: DropdownsStepProps) {
   const [newCategory, setNewCategory] = useState('');
   const [newArea, setNewArea] = useState('');
   const [newAmenity, setNewAmenity] = useState('');
   const [newFurnishing, setNewFurnishing] = useState('');
+  const [newLeadChannel, setNewLeadChannel] = useState('');
 
   // Service Provider inputs
   const [gasName, setGasName] = useState('');
@@ -238,6 +239,43 @@ export default function DropdownsStep({ localSettings, setLocalSettings }: Dropd
                 <button
                   type="button"
                   onClick={() => handleRemoveOption('availableFurnishing', i)}
+                  className="text-zinc-400 hover:text-red-500 transition-colors ml-0.5 cursor-pointer font-extrabold text-[10px]"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Lead Channels */}
+        <div className="space-y-3">
+          <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Lead Channel Sources</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newLeadChannel}
+              onChange={e => setNewLeadChannel(e.target.value)}
+              className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
+              placeholder="Add e.g. Property Finder, Bayut, Instagram, Referral..."
+            />
+            <button
+              type="button"
+              onClick={() => handleAddOption('availableLeadChannels', newLeadChannel, setNewLeadChannel)}
+              className="px-4 text-white rounded-xl font-bold flex items-center justify-center cursor-pointer hover:opacity-90 active:scale-95 transition-all shrink-0"
+              style={{ backgroundColor: localSettings.customBrandColor }}
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 pt-1">
+            {(localSettings.availableLeadChannels || []).map((chan, i) => (
+              <span key={chan} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-850 dark:text-zinc-200 rounded-xl text-xs font-semibold">
+                {chan}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveOption('availableLeadChannels', i)}
                   className="text-zinc-400 hover:text-red-500 transition-colors ml-0.5 cursor-pointer font-extrabold text-[10px]"
                 >
                   ✕

@@ -148,6 +148,24 @@ export default function BookingConsole({ properties, onRefreshStats }: BookingCo
     }
   };
 
+  // Update complete booking schema fields (checklists, signatures, pricing extensions)
+  const handleUpdateBookingFull = async (bookingId: string, updatedFields: Partial<AdminBooking>) => {
+    try {
+      const bRef = doc(db, 'bookings', bookingId);
+      await updateDoc(bRef, {
+        ...updatedFields,
+        updatedAt: serverTimestamp()
+      });
+      // Synchronize both list store and selected focus booking
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...updatedFields } : b));
+      setSelectedBooking(prev => prev && prev.id === bookingId ? { ...prev, ...updatedFields } : prev);
+      onRefreshStats();
+    } catch (err) {
+      console.error("BookingConsole: full fields synchronization failed:", err);
+      alert("Failed to sync fields: " + (err as Error).message);
+    }
+  };
+
   // Save manual intake booking
   const handleSaveManual = async (manualData: Omit<AdminBooking, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -497,6 +515,7 @@ export default function BookingConsole({ properties, onRefreshStats }: BookingCo
             onClose={() => setSelectedBooking(null)}
             onUpdateStatus={handleUpdateStatus}
             onUpdateNotes={handleUpdateNotes}
+            onUpdateBooking={handleUpdateBookingFull}
           />
         )}
       </AnimatePresence>

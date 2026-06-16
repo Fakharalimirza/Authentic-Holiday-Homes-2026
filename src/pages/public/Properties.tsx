@@ -118,8 +118,12 @@ export default function Properties() {
 
   useEffect(() => {
     let filtered = properties.filter(p => {
+      // Exclude draft listings from public viewing
+      if (p.status === 'draft') return false;
+
+      const addressStr = p.location?.address || (typeof p.location === 'string' ? p.location : '') || '';
       const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           p.location.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           addressStr.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            p.buildingName?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPrice = (p.price || 0) >= priceRange[0] && (p.price || 0) <= priceRange[1];
       const matchesBeds = (p.bedrooms || 0) >= minBedrooms;

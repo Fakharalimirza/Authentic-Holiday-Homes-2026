@@ -245,7 +245,7 @@ export default function PropertyFormStep1({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Purpose</label>
           <select 
@@ -267,6 +267,17 @@ export default function PropertyFormStep1({
             {availableFurnishing.map((furn) => (
               <option key={furn} value={furn}>{furn}</option>
             ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Listing Status</label>
+          <select 
+            value={form.status || 'live'}
+            onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))}
+            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-808 rounded-xl focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white transition-all text-zinc-900 dark:text-white font-sans text-xs"
+          >
+            <option value="live">🟢 Live Listing</option>
+            <option value="draft">🟡 Draft Mode</option>
           </select>
         </div>
       </div>

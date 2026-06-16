@@ -8,7 +8,7 @@ import { useGlobalSettings } from '../../contexts/GlobalSettingsContext';
 
 interface PortalLead {
   id: string;
-  source: 'bayut' | 'dubizzle';
+  source: 'bayut' | 'dubizzle' | 'propertyfinder';
   type: 'whatsapp' | 'sms' | 'phone' | 'email' | 'call_log' | 'story';
   date_time: string | null;
   listing_id?: string;
@@ -36,7 +36,7 @@ export default function PortalLeadsConsole() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [portalFilter, setPortalFilter] = useState<'all' | 'bayut' | 'dubizzle'>('all');
+  const [portalFilter, setPortalFilter] = useState<'all' | 'bayut' | 'dubizzle' | 'propertyfinder'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'whatsapp' | 'email' | 'phone' | 'sms' | 'call_log' | 'story'>('all');
   const [alertMessage, setAlertMessage] = useState<{ text: string; success: boolean } | null>(null);
 
@@ -143,7 +143,7 @@ export default function PortalLeadsConsole() {
       </div>
 
       {/* Connection Status Flags */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 p-4 rounded-2xl flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
@@ -153,7 +153,7 @@ export default function PortalLeadsConsole() {
             Poller Active
           </span>
         </div>
-
+ 
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 p-4 rounded-2xl flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className={`w-2.5 h-2.5 rounded-full ${settings.bayutEnabled ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
@@ -167,7 +167,7 @@ export default function PortalLeadsConsole() {
             {settings.bayutEnabled ? 'Enabled' : 'Disabled'}
           </span>
         </div>
-
+ 
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 p-4 rounded-2xl flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className={`w-2.5 h-2.5 rounded-full ${settings.dubizzleEnabled ? 'bg-red-500' : 'bg-zinc-300'}`} />
@@ -179,6 +179,20 @@ export default function PortalLeadsConsole() {
               : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
           }`}>
             {settings.dubizzleEnabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 p-4 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${settings.pfEnabled ? 'bg-rose-500' : 'bg-zinc-300'}`} />
+            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">Property Finder Endpoint</span>
+          </div>
+          <span className={`text-[10px] uppercase tracking-widest font-extrabold px-2 py-0.5 rounded-md ${
+            settings.pfEnabled 
+              ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600' 
+              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+          }`}>
+            {settings.pfEnabled ? 'Enabled' : 'Disabled'}
           </span>
         </div>
       </div>
@@ -195,14 +209,14 @@ export default function PortalLeadsConsole() {
       )}
 
       {/* Analytics Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         
         {/* Total Leads Card */}
         <div className="bg-zinc-900 text-white rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between h-40">
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand/20 rounded-full blur-3xl" style={{ backgroundColor: `${settings.customBrandColor}2a` }} />
           <div>
             <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-extrabold">Validated Leads Today</span>
-            <h3 className="text-4xl font-extrabold tracking-tight mt-1">
+            <h3 className="text-4xl font-extrabold tracking-tight mt-1 font-mono">
               {stats?.totalLeads || 0}
             </h3>
           </div>
@@ -215,7 +229,7 @@ export default function PortalLeadsConsole() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 flex flex-col justify-between h-40">
           <div>
             <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-extrabold">Aggregate Portal Views</span>
-            <h3 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-white mt-1">
+            <h3 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-white mt-1 font-mono">
               {stats?.totalViews || 0}
             </h3>
           </div>
@@ -230,14 +244,14 @@ export default function PortalLeadsConsole() {
             <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-extrabold">Bayut Volume</span>
             <div className="mt-2 space-y-1">
               <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                Inquiries: <span className="font-extrabold">{stats?.sources.find(s => s.source === 'bayut')?.count || 0}</span>
+                Inquiries: <span className="font-extrabold font-mono">{stats?.sources.find(s => s.source === 'bayut')?.count || 0}</span>
               </p>
-              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                Ad Views: <span className="font-extrabold">{stats?.sources.find(s => s.source === 'bayut')?.total_views || 0}</span>
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 font-sans">
+                Ad Views: <span className="font-extrabold font-mono">{stats?.sources.find(s => s.source === 'bayut')?.total_views || 0}</span>
               </p>
             </div>
           </div>
-          <span className="text-[9px] font-black tracking-widest text-emerald-500 uppercase">
+          <span className="text-[9px] font-black tracking-widest text-emerald-500 uppercase font-mono">
             Platform B Logged
           </span>
         </div>
@@ -248,15 +262,33 @@ export default function PortalLeadsConsole() {
             <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-extrabold">Dubizzle Volume</span>
             <div className="mt-2 space-y-1">
               <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                Inquiries: <span className="font-extrabold">{stats?.sources.find(s => s.source === 'dubizzle')?.count || 0}</span>
+                Inquiries: <span className="font-extrabold font-mono">{stats?.sources.find(s => s.source === 'dubizzle')?.count || 0}</span>
               </p>
-              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                Ad Views: <span className="font-extrabold">{stats?.sources.find(s => s.source === 'dubizzle')?.total_views || 0}</span>
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 font-sans">
+                Ad Views: <span className="font-extrabold font-mono">{stats?.sources.find(s => s.source === 'dubizzle')?.total_views || 0}</span>
               </p>
             </div>
           </div>
-          <span className="text-[9px] font-black tracking-widest text-red-500 uppercase">
+          <span className="text-[9px] font-black tracking-widest text-red-500 uppercase font-mono">
             Platform D Logged
+          </span>
+        </div>
+
+        {/* Property Finder Stats breakdown Card */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 rounded-3xl p-6 flex flex-col justify-between h-40">
+          <div>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-extrabold">Property Finder Volume</span>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                Inquiries: <span className="font-extrabold font-mono">{stats?.sources.find(s => s.source === 'propertyfinder')?.count || 0}</span>
+              </p>
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 font-sans">
+                Ad Views: <span className="font-extrabold font-mono">{stats?.sources.find(s => s.source === 'propertyfinder')?.total_views || 0}</span>
+              </p>
+            </div>
+          </div>
+          <span className="text-[9px] font-black tracking-widest text-rose-500 uppercase font-mono">
+            Platform PF Logged
           </span>
         </div>
 
@@ -293,6 +325,7 @@ export default function PortalLeadsConsole() {
               <option value="all">All Portals</option>
               <option value="bayut">Bayut Only</option>
               <option value="dubizzle">Dubizzle Only</option>
+              <option value="propertyfinder">Property Finder Only</option>
             </select>
 
             {/* Inquirer Type Filter */}
@@ -347,6 +380,11 @@ export default function PortalLeadsConsole() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/25 text-emerald-600 dark:text-emerald-400 rounded-full font-sans font-black text-[10px]">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           BAYUT
+                        </span>
+                      ) : lead.source === 'propertyfinder' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/25 text-rose-600 dark:text-rose-400 rounded-full font-sans font-black text-[10px]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          PROPERTY FINDER
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 dark:bg-red-950/25 text-red-600 dark:text-red-400 rounded-full font-sans font-black text-[10px]">
@@ -428,10 +466,10 @@ export default function PortalLeadsConsole() {
         </div>
 
         <p className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed font-sans">
-          This integration consumes Bayut's and Dubizzle's pull-oriented endpoints to aggregate customer interactions. The following structures are fully implemented in the background scheduler's routines:
+          This integration consumes pull-oriented API endpoints across regional portals to aggregate customer interactions. The following structures are fully implemented in the background scheduler's routines:
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-sans">
           <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl space-y-2">
             <span className="font-black text-[10px] uppercase tracking-widest text-emerald-500">Bayut Pull Leads</span>
             <ul className="list-disc pl-4 space-y-1 text-[11px] text-zinc-550 leading-relaxed">
@@ -449,6 +487,15 @@ export default function PortalLeadsConsole() {
               <li><strong>WhatsApp Log Sync:</strong> Integrates custom inquiries and messaging threads safely in the background.</li>
               <li><strong>Phone Listing Views:</strong> Pulls SMS views, phone click events, and cumulative display indicators.</li>
               <li><strong>Story Leads API:</strong> Extracts leads coming directly from animated real estate videos and developer stories.</li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl space-y-2">
+            <span className="font-black text-[10px] uppercase tracking-widest text-rose-500">Property Finder Atlas API</span>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-zinc-550 leading-relaxed">
+              <li><strong>Lead Aggregator:</strong> Synchronizes chat logs, inquiry forms, and WhatsApp button clicks.</li>
+              <li><strong>DLD Validation Matching:</strong> Confirms permit status matches licensed agent credentials.</li>
+              <li><strong>Atlas Portal Sync:</strong> Publishes directly to live listings instantly using active client tokens.</li>
             </ul>
           </div>
         </div>

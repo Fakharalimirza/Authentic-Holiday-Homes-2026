@@ -221,7 +221,7 @@ export async function getDoc(docRef: any) {
   if (collectionName === 'properties') {
     singular = 'property';
   }
-  const payload = data[collectionName === 'users' ? 'user' : singular] || data.data || data[collectionName];
+  const payload = data[collectionName === 'users' ? 'user' : singular] || data.data || data[collectionName] || (data && (data.id || data.uid) ? data : null);
   const mappedPayload = parseTimestamps(payload);
   return {
     exists: () => !!mappedPayload,

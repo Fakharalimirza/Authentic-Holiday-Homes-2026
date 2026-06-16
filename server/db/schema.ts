@@ -33,6 +33,7 @@ export const SCHEMA_STATEMENTS = [
       isAvailable TINYINT(1) DEFAULT 1,
       rating DECIMAL(3, 2) DEFAULT 5.00,
       reviewCount INT DEFAULT 0,
+      status VARCHAR(50) DEFAULT 'live',
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`,
   `CREATE TABLE IF NOT EXISTS property_reviews (
@@ -57,6 +58,14 @@ export const SCHEMA_STATEMENTS = [
       checkOut DATE NOT NULL,
       totalPrice DECIMAL(10, 2) DEFAULT 0.00,
       status VARCHAR(50) DEFAULT 'pending',
+      contractSent TINYINT(1) DEFAULT 0,
+      contractSigned TINYINT(1) DEFAULT 0,
+      contractSignature LONGTEXT,
+      contractSignedAt VARCHAR(128) DEFAULT NULL,
+      contractSignedIp VARCHAR(128) DEFAULT NULL,
+      contractSignedUserAgent VARCHAR(255) DEFAULT NULL,
+      contractSignedName VARCHAR(255) DEFAULT NULL,
+      advanceBookingFee DECIMAL(10, 2) DEFAULT 0.00,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`,
   `CREATE TABLE IF NOT EXISTS secured_documents (
@@ -284,7 +293,14 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
       { name: "updatedAt", type: "TIMESTAMP NULL DEFAULT NULL" },
       { name: "isDeleted", type: "TINYINT(1) DEFAULT 0" },
       { name: "landlordId", type: "VARCHAR(128) DEFAULT NULL" },
-      { name: "buildingId", type: "VARCHAR(128) DEFAULT NULL" }
+      { name: "buildingId", type: "VARCHAR(128) DEFAULT NULL" },
+      { name: "pfListingId", type: "VARCHAR(128) DEFAULT NULL" },
+      { name: "pfImported", type: "TINYINT(1) DEFAULT 0" },
+      { name: "pfRawData", type: "LONGTEXT DEFAULT NULL" },
+      { name: "pfPermitNumber", type: "VARCHAR(100) DEFAULT NULL" },
+      { name: "pfLocationId", type: "INT DEFAULT NULL" },
+      { name: "pfAssignedTo", type: "VARCHAR(255) DEFAULT NULL" },
+      { name: "status", type: "VARCHAR(50) DEFAULT 'live'" }
     ];
     for (const col of colsToAdd) {
       try {
@@ -351,6 +367,23 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
     for (const col of unitColsToAdd) {
       try {
         await p.query(`ALTER TABLE units ADD COLUMN ${col.name} ${col.type}`);
+      } catch (e) {}
+    }
+
+    // Alter schema safety to ensure all modern e-contract columns exist in bookings
+    const bookingColsToAdd = [
+      { name: "contractSent", type: "TINYINT(1) DEFAULT 0" },
+      { name: "contractSigned", type: "TINYINT(1) DEFAULT 0" },
+      { name: "contractSignature", type: "LONGTEXT DEFAULT NULL" },
+      { name: "contractSignedAt", type: "VARCHAR(128) DEFAULT NULL" },
+      { name: "contractSignedIp", type: "VARCHAR(128) DEFAULT NULL" },
+      { name: "contractSignedUserAgent", type: "VARCHAR(255) DEFAULT NULL" },
+      { name: "contractSignedName", type: "VARCHAR(255) DEFAULT NULL" },
+      { name: "advanceBookingFee", type: "DECIMAL(10,2) DEFAULT 0.00" }
+    ];
+    for (const col of bookingColsToAdd) {
+      try {
+        await p.query(`ALTER TABLE bookings ADD COLUMN ${col.name} ${col.type}`);
       } catch (e) {}
     }
 

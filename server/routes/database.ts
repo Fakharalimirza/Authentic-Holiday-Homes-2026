@@ -90,6 +90,18 @@ router.get("/bookings", async (req, res) => {
   }
 });
 
+router.get("/bookings/:id", async (req, res) => {
+  try {
+    const item = await dbBridge.getBooking(req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    res.json({ success: true, booking: item });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/bookings", async (req, res) => {
   try {
     const { id, ...data } = req.body;
