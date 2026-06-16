@@ -387,6 +387,21 @@ export async function initDbTables(p: mysql.Pool): Promise<void> {
       } catch (e) {}
     }
 
+    // Alter schema safety to ensure keys and ids are expanded to full length in case of production limitations
+    const columnsToModify = [
+      { tbl: "bookings", col: "id", type: "VARCHAR(128)" },
+      { tbl: "bookings", col: "propertyId", type: "VARCHAR(128)" },
+      { tbl: "bookings", col: "guestId", type: "VARCHAR(128)" },
+      { tbl: "users", col: "uid", type: "VARCHAR(128)" },
+      { tbl: "listings", col: "id", type: "VARCHAR(128)" },
+      { tbl: "listings", col: "hostId", type: "VARCHAR(128)" }
+    ];
+    for (const column of columnsToModify) {
+      try {
+        await p.query(`ALTER TABLE ${column.tbl} MODIFY COLUMN ${column.col} ${column.type}`);
+      } catch (e) {}
+    }
+
     // One-time dynamic migration for property_amenities table
     try {
       const [existingRows] = await p.query("SELECT COUNT(*) as count FROM property_amenities");

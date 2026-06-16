@@ -90,7 +90,12 @@ export async function getAllBookings(): Promise<any[]> {
 }
 
 export async function getBooking(id: string): Promise<any | null> {
-  const rows = await query("SELECT * FROM bookings WHERE id = ?", [id]);
+  let rows = await query("SELECT * FROM bookings WHERE id = ?", [id]);
+  if ((!rows || rows.length === 0) && id && id.length > 20) {
+    // Fallback search using 20-character truncated ID block
+    const trunId = id.substring(0, 20);
+    rows = await query("SELECT * FROM bookings WHERE id = ?", [trunId]);
+  }
   if (!rows || rows.length === 0) return null;
   const row = rows[0];
   return {
