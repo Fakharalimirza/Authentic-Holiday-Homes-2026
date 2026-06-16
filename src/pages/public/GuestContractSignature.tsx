@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { doc, getDoc, updateDoc, db } from '../../lib/firebase';
 import { AdminBooking } from '../admin/bookings/types';
 import { AlertCircle, FileText, CheckCircle2, ChevronRight, PenTool, Type, RefreshCw, Printer, ShieldCheck, Download, Calendar } from 'lucide-react';
 
@@ -52,19 +51,26 @@ export default function GuestContractSignature() {
       }
 
       try {
-        const docRef = doc(db, 'bookings', id);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const data = snap.data() as AdminBooking;
-          setBooking({ id: snap.id, ...data });
+        const res = await fetch(`/api/db/bookings/${id}`);
+        if (!res.ok) {
+          setError("Rental Booking not found. Please review your link.");
+          setLoading(false);
+          return;
+        }
+
+        const resData = await res.json();
+        const data = resData.booking || resData.data || (resData.id ? resData : null);
+
+        if (data) {
+          setBooking({ id: id, ...data });
           if (data.contractSigned) {
             setSignedRecord({
-              ip: (data as any).contractSignedIp || 'Record On File',
-              userAgent: (data as any).contractSignedUserAgent || 'Mozilla/5.0',
-              signedAt: (data as any).contractSignedAt || new Date().toISOString(),
-              serialNo: `AHH-AGR-${snap.id.substring(0, 8).toUpperCase()}`
+              ip: data.contractSignedIp || 'Record On File',
+              userAgent: data.contractSignedUserAgent || 'Mozilla/5.0',
+              signedAt: data.contractSignedAt || new Date().toISOString(),
+              serialNo: `AHH-AGR-${id.substring(0, 8).toUpperCase()}`
             });
-            setSignatureImage((data as any).contractSignature || null);
+            setSignatureImage(data.contractSignature || null);
           }
         } else {
           setError("Rental Booking not found. Please review your link.");
@@ -211,8 +217,17 @@ export default function GuestContractSignature() {
     const agreementSerial = `AHH-AGR-${booking.id.substring(0, 8).toUpperCase()}`;
 
     try {
-      const docRef = doc(db, 'bookings', booking.id);
-      await updateDoc(docRef, {
+      // 1. Fetch current booking details from the API so we merge fields instead of overwriting table columns
+      const freshRes = await fetch(`/api/db/bookings/${booking.id}`);
+      let freshData = {};
+      if (freshRes.ok) {
+        const freshBody = await freshRes.json();
+        freshData = freshBody.booking || freshBody.data || (freshBody.id ? freshBody : {});
+      }
+
+      // 2. Perform direct update POST to database
+      const updatedFields = {
+        ...freshData,
         contractSigned: true,
         contractSent: true,
         contractSignature: sigDataUrl,
@@ -220,7 +235,17 @@ export default function GuestContractSignature() {
         contractSignedIp: ipAddress,
         contractSignedUserAgent: navigator.userAgent,
         contractSignedName: sigMode === 'type' ? typedName : 'Drawn Digitally'
+      };
+
+      const updateRes = await fetch('/api/db/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: booking.id, ...updatedFields })
       });
+
+      if (!updateRes.ok) {
+        throw new Error("Failed direct DB save");
+      }
 
       setSignedRecord({
         ip: ipAddress,

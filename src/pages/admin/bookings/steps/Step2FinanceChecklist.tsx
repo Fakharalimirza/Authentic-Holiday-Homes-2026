@@ -70,12 +70,24 @@ export default function Step2FinanceChecklist({
         setMoveInContractSent(true);
         setMailFeedback("Tenancy agreement link dispatched to: " + booking.guestEmail);
       } else {
-        const errorData = await res.json();
-        alert("Dispenser error: " + (errorData.error || "SMTP pipeline malfunction. Verify MAIL_PASSWORD."));
+        let errMsg = "SMTP pipeline malfunction. Verify MAIL_PASSWORD.";
+        try {
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await res.json();
+            errMsg = errorData.error || errMsg;
+          } else {
+            const text = await res.text();
+            errMsg = text.substring(0, 150) || errMsg;
+          }
+        } catch (parseErr) {
+          console.error("Failed to parse status response:", parseErr);
+        }
+        alert("Dispenser error: " + errMsg);
       }
     } catch (err: any) {
       console.error(err);
-      alert("Connectivity error dispatching contract email transaction.");
+      alert("Connectivity error dispatching contract email transaction. Please check your internet or retry.");
     } finally {
       setIsSending(false);
     }
