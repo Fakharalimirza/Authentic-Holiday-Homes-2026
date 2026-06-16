@@ -52,6 +52,17 @@ export async function saveBooking(id: string, booking: any): Promise<void> {
   ]);
 }
 
+function safeDateString(val: any): string {
+  if (!val) return "";
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split('T')[0];
+  } catch (err) {
+    return "";
+  }
+}
+
 export async function getAllBookings(): Promise<any[]> {
   const rows = await query("SELECT * FROM bookings ORDER BY createdAt DESC");
   return rows.map((row: any) => ({
@@ -62,8 +73,8 @@ export async function getAllBookings(): Promise<any[]> {
     guestName: row.guestName,
     guestEmail: row.guestEmail,
     guestPhone: row.guestPhone,
-    checkIn: row.checkIn ? new Date(row.checkIn).toISOString().split('T')[0] : '',
-    checkOut: row.checkOut ? new Date(row.checkOut).toISOString().split('T')[0] : '',
+    checkIn: safeDateString(row.checkIn),
+    checkOut: safeDateString(row.checkOut),
     totalPrice: Number(row.totalPrice),
     status: row.status,
     contractSent: Boolean(row.contractSent),
@@ -90,8 +101,8 @@ export async function getBooking(id: string): Promise<any | null> {
     guestName: row.guestName,
     guestEmail: row.guestEmail,
     guestPhone: row.guestPhone,
-    checkIn: row.checkIn ? new Date(row.checkIn).toISOString().split('T')[0] : '',
-    checkOut: row.checkOut ? new Date(row.checkOut).toISOString().split('T')[0] : '',
+    checkIn: safeDateString(row.checkIn),
+    checkOut: safeDateString(row.checkOut),
     totalPrice: Number(row.totalPrice),
     status: row.status,
     contractSent: Boolean(row.contractSent),

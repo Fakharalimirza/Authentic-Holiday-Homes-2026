@@ -53,7 +53,23 @@ export default function GuestContractSignature() {
       try {
         const res = await fetch(`/api/db/bookings/${id}`);
         if (!res.ok) {
-          setError("Rental Booking not found. Please review your link.");
+          let errMsg = "Rental Booking not found. Please review your link.";
+          try {
+            const errData = await res.json();
+            if (errData && errData.error) {
+              errMsg = `Database/Server Error: ${errData.error}`;
+            }
+          } catch (jsonErr) {
+            try {
+              const text = await res.text();
+              if (text && text.length < 200) {
+                errMsg = `Server Status ${res.status}: ${text}`;
+              } else {
+                errMsg = `Backend error (status ${res.status}). Ensure database connection is active in settings.`;
+              }
+            } catch (tErr) {}
+          }
+          setError(errMsg);
           setLoading(false);
           return;
         }
